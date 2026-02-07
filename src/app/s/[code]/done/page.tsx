@@ -8,6 +8,7 @@ interface Session {
   id: string;
   outroHeading: string;
   outroBody: string;
+  outroMediaFilename: string | null;
   code: string;
   images: { id: string }[];
 }
@@ -109,10 +110,34 @@ export default function DonePage() {
     );
   }
 
+  const hasMedia = !!session.outroMediaFilename;
+  const isOutroVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(session.outroMediaFilename!);
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-6 dark:bg-zinc-950">
-      <div className="flex w-full max-w-lg flex-col items-center text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-50 dark:bg-green-950">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-white px-6 dark:bg-zinc-950">
+      {/* Background media */}
+      {hasMedia && (
+        isOutroVideo ? (
+          <video
+            src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename!)}`}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <img
+            src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename!)}`}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )
+      )}
+      {hasMedia && <div className="absolute inset-0 bg-black/50" />}
+
+      <div className={`relative z-10 flex w-full max-w-lg flex-col items-center text-center ${hasMedia ? "text-white" : ""}`}>
+        <div className={`flex h-16 w-16 items-center justify-center rounded-full ${hasMedia ? "bg-white/20" : "bg-green-50 dark:bg-green-950"}`}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -121,24 +146,24 @@ export default function DonePage() {
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-8 w-8 text-green-500"
+            className={`h-8 w-8 ${hasMedia ? "text-white" : "text-green-500"}`}
           >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
 
-        <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
+        <h1 className={`mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${hasMedia ? "text-white" : "text-zinc-900 dark:text-zinc-50"}`}>
           {session.outroHeading}
         </h1>
 
-        <p className="mt-6 text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p className={`mt-6 text-lg leading-relaxed ${hasMedia ? "text-white/80" : "text-zinc-600 dark:text-zinc-400"}`}>
           {session.outroBody}
         </p>
 
         {/* Record final thoughts */}
         {!submitted && (
           <div className="mt-10 flex flex-col items-center gap-4">
-            <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
+            <p className={`text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
               Want to share any final thoughts?
             </p>
 
@@ -147,7 +172,9 @@ export default function DonePage() {
               className={`flex h-14 w-14 items-center justify-center rounded-full transition-all ${
                 isRecording
                   ? "animate-pulse bg-red-500 text-white"
-                  : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  : hasMedia
+                    ? "bg-white/20 text-white hover:bg-white/30"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
               }`}
               aria-label={
                 isRecording ? "Stop recording" : "Record final thoughts"
@@ -172,13 +199,17 @@ export default function DonePage() {
 
             {!isRecording && audioBlob && audioBlob.size > 0 && (
               <div className="flex flex-col items-center gap-3">
-                <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
+                <span className={`text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
                   Audio recorded
                 </span>
                 <button
                   onClick={handleSubmitRecording}
                   disabled={submitting}
-                  className="h-12 rounded-2xl bg-zinc-900 px-8 text-base font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+                  className={`h-12 rounded-2xl px-8 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    hasMedia
+                      ? "bg-white text-zinc-900 hover:bg-white/90 active:bg-white/80"
+                      : "bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+                  }`}
                 >
                   {submitting ? "Submitting..." : "Submit Recording"}
                 </button>
@@ -188,12 +219,12 @@ export default function DonePage() {
         )}
 
         {submitted && (
-          <p className="mt-8 text-sm font-medium text-green-600 dark:text-green-400">
+          <p className={`mt-8 text-sm font-medium ${hasMedia ? "text-green-300" : "text-green-600 dark:text-green-400"}`}>
             Your recording has been submitted. Thank you!
           </p>
         )}
 
-        <p className="mt-12 text-sm text-zinc-300 dark:text-zinc-700">
+        <p className={`mt-12 text-sm ${hasMedia ? "text-white/40" : "text-zinc-300 dark:text-zinc-700"}`}>
           You may close this tab.
         </p>
       </div>

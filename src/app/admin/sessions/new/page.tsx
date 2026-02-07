@@ -18,7 +18,7 @@ export default function NewSessionPage() {
   const [outroBody, setOutroBody] = useState(
     "Your feedback has been recorded."
   );
-  const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise">("binary");
+  const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -175,14 +175,20 @@ export default function NewSessionPage() {
                   id="votingMode"
                   value={votingMode}
                   onChange={(e) =>
-                    setVotingMode(e.target.value as "binary" | "scale" | "pairwise")
+                    setVotingMode(e.target.value as "binary" | "scale" | "pairwise" | "guided_tour")
                   }
                   className={inputClass}
                 >
                   <option value="binary">Binary (Yes / No)</option>
                   <option value="scale">Scale (1-5)</option>
                   <option value="pairwise">Pairwise Comparison</option>
+                  <option value="guided_tour">Guided Tour (Rate + Compare)</option>
                 </select>
+                {votingMode === "guided_tour" && (
+                  <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                    Phase 1: Participants rate each image (thumbs up/down). Phase 2: They compare every unique pair side by side.
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <input

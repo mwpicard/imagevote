@@ -96,7 +96,7 @@ export default function SessionListPage() {
                       {session.code}
                     </span>
                     <span>{session.images.length} image{session.images.length !== 1 ? "s" : ""}</span>
-                    <span className="capitalize">{session.votingMode}</span>
+                    <span className="capitalize">{session.votingMode === "guided_tour" ? "Guided Tour" : session.votingMode}</span>
                     <span>
                       {new Date(session.createdAt).toLocaleDateString()}
                     </span>

@@ -18,9 +18,11 @@ interface Session {
   description: string | null;
   introHeading: string;
   introBody: string;
+  introMediaFilename: string | null;
   outroHeading: string;
   outroBody: string;
-  votingMode: "binary" | "scale" | "pairwise";
+  outroMediaFilename: string | null;
+  votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   randomizeOrder: boolean;
   code: string;
   createdAt: string;
@@ -42,7 +44,7 @@ export default function EditSessionPage() {
   const [introBody, setIntroBody] = useState("");
   const [outroHeading, setOutroHeading] = useState("");
   const [outroBody, setOutroBody] = useState("");
-  const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise">("binary");
+  const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
 
   // Image upload fields
@@ -50,6 +52,8 @@ export default function EditSessionPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [imageLabel, setImageLabel] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   const fetchSession = useCallback(async () => {
     setLoading(true);
@@ -136,6 +140,63 @@ export default function EditSessionPage() {
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleMediaUpload(target: "intro" | "outro", file: File) {
+    const formData = new FormData();
+    formData.append("target", target);
+    formData.append("file", file);
+    const res = await fetch(`/api/sessions/${id}/media`, {
+      method: "POST",
+      body: formData,
+    });
+    if (res.ok) {
+      await fetchSession();
+    }
+  }
+
+  async function handleMediaDelete(target: "intro" | "outro") {
+    const res = await fetch(`/api/sessions/${id}/media`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    });
+    if (res.ok) {
+      await fetchSession();
+    }
+  }
+
+  async function handleBulkUpload(files: FileList) {
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length === 0) return;
+
+    setBulkUploading(true);
+    setBulkProgress({ done: 0, total: imageFiles.length });
+
+    let currentOrder = session?.images.length ?? 0;
+    for (const file of imageFiles) {
+      const formData = new FormData();
+      formData.append("image", file);
+      // Use filename without extension as label
+      const label = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+      formData.append("label", label);
+      formData.append("sortOrder", String(currentOrder));
+
+      await fetch(`/api/sessions/${id}/images`, {
+        method: "POST",
+        body: formData,
+      });
+
+      currentOrder++;
+      setBulkProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+    }
+
+    // Reset
+    const bulkInput = document.getElementById("bulkUpload") as HTMLInputElement;
+    if (bulkInput) bulkInput.value = "";
+    setBulkUploading(false);
+    setBulkProgress({ done: 0, total: 0 });
+    await fetchSession();
   }
 
   async function handleDeleteImage(imageId: string) {
@@ -286,6 +347,43 @@ export default function EditSessionPage() {
                   className={inputClass}
                 />
               </div>
+              <div>
+                <label className={labelClass}>Background image or video</label>
+                {session.introMediaFilename ? (
+                  <div className="flex items-center gap-3">
+                    {session.introMediaFilename.match(/\.(mp4|webm|mov)$/i) ? (
+                      <video
+                        src={`/api/uploads?file=${encodeURIComponent(session.introMediaFilename)}`}
+                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={`/api/uploads?file=${encodeURIComponent(session.introMediaFilename)}`}
+                        alt="Intro media"
+                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleMediaDelete("intro")}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleMediaUpload("intro", f);
+                    }}
+                    className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -318,6 +416,43 @@ export default function EditSessionPage() {
                   className={inputClass}
                 />
               </div>
+              <div>
+                <label className={labelClass}>Background image or video</label>
+                {session.outroMediaFilename ? (
+                  <div className="flex items-center gap-3">
+                    {session.outroMediaFilename.match(/\.(mp4|webm|mov)$/i) ? (
+                      <video
+                        src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename)}`}
+                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename)}`}
+                        alt="Outro media"
+                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleMediaDelete("outro")}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleMediaUpload("outro", f);
+                    }}
+                    className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -334,14 +469,28 @@ export default function EditSessionPage() {
                   id="votingMode"
                   value={votingMode}
                   onChange={(e) =>
-                    setVotingMode(e.target.value as "binary" | "scale" | "pairwise")
+                    setVotingMode(e.target.value as "binary" | "scale" | "pairwise" | "guided_tour")
                   }
                   className={inputClass}
                 >
                   <option value="binary">Binary (Yes / No)</option>
                   <option value="scale">Scale (1-5)</option>
                   <option value="pairwise">Pairwise Comparison</option>
+                  <option value="guided_tour">Guided Tour (Rate + Compare)</option>
                 </select>
+                {votingMode === "guided_tour" && (
+                  <div className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                    <p>Phase 1: Rate each image. Phase 2: Compare all pairs side by side.</p>
+                    {session && session.images.length > 0 && (
+                      <p className="mt-1 font-medium">
+                        {session.images.length} images = {(session.images.length * (session.images.length - 1)) / 2} pairs
+                        {session.images.length > 10 && (
+                          <span className="ml-1 text-amber-700"> (this may be long for participants)</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <input
@@ -381,12 +530,61 @@ export default function EditSessionPage() {
             {session.images.length} image{session.images.length !== 1 ? "s" : ""} in this session
           </p>
 
-          {/* Upload Area */}
+          {/* Bulk Upload Area */}
           <div className="mt-6 rounded-xl border border-dashed border-zinc-300 bg-white p-6">
-            <h3 className="mb-4 text-sm font-semibold text-zinc-700">
-              Add New Image
+            <h3 className="mb-1 text-sm font-semibold text-zinc-700">
+              Add Images
             </h3>
-            <div className="space-y-4">
+            <p className="mb-4 text-sm text-zinc-500">
+              Select multiple files or an entire folder. Labels are set from filenames.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex h-11 cursor-pointer items-center rounded-lg bg-zinc-800 px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-700">
+                Choose Files
+                <input
+                  id="bulkUpload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleBulkUpload(e.target.files);
+                    }
+                  }}
+                  disabled={bulkUploading}
+                />
+              </label>
+              <label className="flex h-11 cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50">
+                Choose Folder
+                <input
+                  type="file"
+                  accept="image/*"
+                  /* @ts-expect-error webkitdirectory is not in TS types */
+                  webkitdirectory=""
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleBulkUpload(e.target.files);
+                    }
+                  }}
+                  disabled={bulkUploading}
+                />
+              </label>
+              {bulkUploading && (
+                <span className="text-sm text-zinc-500">
+                  Uploading {bulkProgress.done}/{bulkProgress.total}...
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Single Image + Video Upload */}
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium text-zinc-500 hover:text-zinc-700">
+              Add single image with video
+            </summary>
+            <div className="mt-3 rounded-xl border border-dashed border-zinc-300 bg-white p-6 space-y-4">
               <div>
                 <label htmlFor="imageUpload" className={labelClass}>
                   Image file <span className="text-red-500">*</span>
@@ -433,7 +631,7 @@ export default function EditSessionPage() {
                 {uploading ? "Uploading..." : "Add Image"}
               </button>
             </div>
-          </div>
+          </details>
 
           {/* Image List */}
           {session.images.length > 0 && (

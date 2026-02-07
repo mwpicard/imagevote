@@ -19,7 +19,7 @@ interface Session {
   introBody: string;
   outroHeading: string;
   outroBody: string;
-  votingMode: "binary" | "scale" | "pairwise";
+  votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   randomizeOrder: boolean;
   code: string;
   images: ImageItem[];
@@ -115,7 +115,11 @@ export default function EvaluatePage() {
 
       // Move to next image or done
       if (currentIndex + 1 >= orderedImages.length) {
-        router.push(`/s/${params.code}/done`);
+        if (session.votingMode === "guided_tour") {
+          router.push(`/s/${params.code}/compare`);
+        } else {
+          router.push(`/s/${params.code}/done`);
+        }
       } else {
         setCurrentIndex((prev) => prev + 1);
         setVote(null);
@@ -173,7 +177,12 @@ export default function EvaluatePage() {
   return (
     <div className="flex min-h-dvh flex-col bg-white dark:bg-zinc-950">
       {/* Progress bar */}
-      <div className="flex items-center justify-center px-4 pt-4 pb-2">
+      <div className="flex flex-col items-center px-4 pt-4 pb-2">
+        {session.votingMode === "guided_tour" && (
+          <span className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+            Phase 1 of 2 — Rate
+          </span>
+        )}
         <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
           {currentIndex + 1} of {orderedImages.length}
         </span>
@@ -212,7 +221,7 @@ export default function EvaluatePage() {
 
         {/* Voting controls */}
         <div className="flex items-center justify-center gap-3">
-          {session.votingMode === "binary" && (
+          {(session.votingMode === "binary" || session.votingMode === "guided_tour") && (
             <>
               <button
                 onClick={() => setVote(0)}
@@ -315,7 +324,9 @@ export default function EvaluatePage() {
           {submitting
             ? "Submitting..."
             : currentIndex + 1 >= orderedImages.length
-              ? "Finish"
+              ? session.votingMode === "guided_tour"
+                ? "Next Phase"
+                : "Finish"
               : "Next"}
         </button>
       </div>

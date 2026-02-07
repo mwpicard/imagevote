@@ -25,6 +25,8 @@ sqlite.exec(`
     intro_body TEXT NOT NULL DEFAULT 'You will be shown a series of images. For each one, share your impressions and vote.',
     outro_heading TEXT NOT NULL DEFAULT 'Thank you!',
     outro_body TEXT NOT NULL DEFAULT 'Your feedback has been recorded.',
+    intro_media_filename TEXT,
+    outro_media_filename TEXT,
     voting_mode TEXT NOT NULL DEFAULT 'binary',
     randomize_order INTEGER NOT NULL DEFAULT 0,
     code TEXT NOT NULL UNIQUE,
@@ -59,4 +61,24 @@ sqlite.exec(`
     transcription TEXT,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS pairwise_responses (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    participant_id TEXT NOT NULL,
+    image_a_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+    image_b_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+    winner_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+    audio_filename TEXT,
+    transcription TEXT,
+    created_at TEXT NOT NULL
+  );
 `);
+
+// Migrations for existing databases
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN intro_media_filename TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_media_filename TEXT`);
+} catch { /* column already exists */ }
