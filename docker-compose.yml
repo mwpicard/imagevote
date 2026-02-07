@@ -1,0 +1,11 @@
+services:
+  imagevote:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - imagevote-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  imagevote-data:
