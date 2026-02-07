@@ -1,0 +1,62 @@
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema";
+import path from "path";
+import fs from "fs";
+
+const dataDir = path.join(process.cwd(), "data");
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const sqlite = new Database(path.join(dataDir, "imagevote.db"));
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
+
+export const db = drizzle(sqlite, { schema });
+
+// Create tables if they don't exist
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    intro_heading TEXT NOT NULL DEFAULT 'Welcome',
+    intro_body TEXT NOT NULL DEFAULT 'You will be shown a series of images. For each one, share your impressions and vote.',
+    outro_heading TEXT NOT NULL DEFAULT 'Thank you!',
+    outro_body TEXT NOT NULL DEFAULT 'Your feedback has been recorded.',
+    voting_mode TEXT NOT NULL DEFAULT 'binary',
+    randomize_order INTEGER NOT NULL DEFAULT 0,
+    code TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS images (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    video_filename TEXT,
+    label TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS responses (
+    id TEXT PRIMARY KEY,
+    image_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    participant_id TEXT NOT NULL,
+    vote INTEGER,
+    audio_filename TEXT,
+    transcription TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS outro_recordings (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    participant_id TEXT NOT NULL,
+    audio_filename TEXT NOT NULL,
+    transcription TEXT,
+    created_at TEXT NOT NULL
+  );
+`);
