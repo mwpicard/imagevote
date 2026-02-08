@@ -9,6 +9,7 @@ interface ImageItem {
   id: string;
   filename: string;
   videoFilename: string | null;
+  audioFilename: string | null;
   label: string | null;
   sortOrder: number;
 }
@@ -26,6 +27,7 @@ interface Session {
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   language: string;
   randomizeOrder: boolean;
+  autoRecord: boolean;
   projectId: string | null;
   code: string;
   createdAt: string;
@@ -50,10 +52,12 @@ export default function EditSessionPage() {
   const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
   const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
+  const [autoRecord, setAutoRecord] = useState(false);
 
   // Image upload fields
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [imageLabel, setImageLabel] = useState("");
   const [uploading, setUploading] = useState(false);
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -76,6 +80,7 @@ export default function EditSessionPage() {
         setVotingMode(data.votingMode);
         setLanguage((data.language || "en") as Locale);
         setRandomizeOrder(data.randomizeOrder);
+        setAutoRecord(data.autoRecord ?? false);
       }
     } finally {
       setLoading(false);
@@ -104,6 +109,7 @@ export default function EditSessionPage() {
           votingMode,
           language,
           randomizeOrder,
+          autoRecord,
         }),
       });
       if (res.ok) {
@@ -124,6 +130,7 @@ export default function EditSessionPage() {
       const formData = new FormData();
       formData.append("image", imageFile);
       if (videoFile) formData.append("video", videoFile);
+      if (audioFile) formData.append("audio", audioFile);
       if (imageLabel.trim()) formData.append("label", imageLabel.trim());
       const nextOrder = session?.images.length ?? 0;
       formData.append("sortOrder", String(nextOrder));
@@ -136,12 +143,15 @@ export default function EditSessionPage() {
       if (res.ok) {
         setImageFile(null);
         setVideoFile(null);
+        setAudioFile(null);
         setImageLabel("");
         // Reset the file inputs
         const imageInput = document.getElementById("imageUpload") as HTMLInputElement;
         const videoInput = document.getElementById("videoUpload") as HTMLInputElement;
+        const audioInput = document.getElementById("audioUpload") as HTMLInputElement;
         if (imageInput) imageInput.value = "";
         if (videoInput) videoInput.value = "";
+        if (audioInput) audioInput.value = "";
         await fetchSession();
       }
     } finally {
@@ -515,6 +525,18 @@ export default function EditSessionPage() {
                   Randomize image order for each participant
                 </label>
               </div>
+              <div className="flex items-center gap-3">
+                <input
+                  id="autoRecord"
+                  type="checkbox"
+                  checked={autoRecord}
+                  onChange={(e) => setAutoRecord(e.target.checked)}
+                  className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="autoRecord" className="text-sm text-zinc-700">
+                  Auto-record participant audio for each image
+                </label>
+              </div>
               <div>
                 <label htmlFor="language" className={labelClass}>
                   Participant Language
@@ -613,7 +635,7 @@ export default function EditSessionPage() {
           {/* Single Image + Video Upload */}
           <details className="mt-4">
             <summary className="cursor-pointer text-sm font-medium text-zinc-500 hover:text-zinc-700">
-              Add single image with video
+              Add single image with video/audio
             </summary>
             <div className="mt-3 rounded-xl border border-dashed border-zinc-300 bg-white p-6 space-y-4">
               <div>
@@ -637,6 +659,18 @@ export default function EditSessionPage() {
                   type="file"
                   accept="video/*"
                   onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+                />
+              </div>
+              <div>
+                <label htmlFor="audioUpload" className={labelClass}>
+                  Audio file (optional — auto-plays during evaluation)
+                </label>
+                <input
+                  id="audioUpload"
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
                   className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
                 />
               </div>
@@ -689,6 +723,11 @@ export default function EditSessionPage() {
                       {img.videoFilename && (
                         <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
                           Video
+                        </span>
+                      )}
+                      {img.audioFilename && (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          Audio
                         </span>
                       )}
                       <span>Order: {img.sortOrder}</span>

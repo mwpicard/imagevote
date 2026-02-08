@@ -24,6 +24,7 @@ export default function NewSessionInProjectPage() {
   const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
   const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
+  const [autoRecord, setAutoRecord] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projects/${projectId}`)
@@ -50,6 +51,7 @@ export default function NewSessionInProjectPage() {
           votingMode,
           language,
           randomizeOrder,
+          autoRecord,
           projectId,
         }),
       });
@@ -223,6 +225,18 @@ export default function NewSessionInProjectPage() {
                 />
                 <label htmlFor="randomizeOrder" className="text-sm text-zinc-700">
                   Randomize image order for each participant
+                </label>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  id="autoRecord"
+                  type="checkbox"
+                  checked={autoRecord}
+                  onChange={(e) => setAutoRecord(e.target.checked)}
+                  className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="autoRecord" className="text-sm text-zinc-700">
+                  Auto-record participant audio for each image
                 </label>
               </div>
               <div>

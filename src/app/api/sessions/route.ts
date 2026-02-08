@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     votingMode: body.votingMode || "binary",
     language: body.language || "en",
     randomizeOrder: body.randomizeOrder || false,
+    autoRecord: body.autoRecord || false,
     projectId: body.projectId || null,
     code,
     createdAt: new Date().toISOString(),

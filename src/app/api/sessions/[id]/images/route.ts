@@ -24,6 +24,7 @@ export async function POST(
   const formData = await req.formData();
   const image = formData.get("image") as File | null;
   const video = formData.get("video") as File | null;
+  const audio = formData.get("audio") as File | null;
   const label = formData.get("label") as string | null;
   const sortOrder = parseInt(formData.get("sortOrder") as string) || 0;
 
@@ -45,11 +46,20 @@ export async function POST(
     fs.writeFileSync(path.join(uploadsDir, videoFilename), videoBuffer);
   }
 
+  let audioFilename: string | null = null;
+  if (audio) {
+    const audExt = path.extname(audio.name) || ".mp3";
+    audioFilename = `${imageId}-audio${audExt}`;
+    const audioBuffer = Buffer.from(await audio.arrayBuffer());
+    fs.writeFileSync(path.join(uploadsDir, audioFilename), audioBuffer);
+  }
+
   await db.insert(images).values({
     id: imageId,
     sessionId,
     filename: imageFilename,
     videoFilename,
+    audioFilename,
     label,
     sortOrder,
   });
@@ -86,6 +96,10 @@ export async function DELETE(
   if (image.videoFilename) {
     const vidPath = path.join(uploadsDir, image.videoFilename);
     if (fs.existsSync(vidPath)) fs.unlinkSync(vidPath);
+  }
+  if (image.audioFilename) {
+    const audPath = path.join(uploadsDir, image.audioFilename);
+    if (fs.existsSync(audPath)) fs.unlinkSync(audPath);
   }
 
   await db.delete(images).where(eq(images.id, imageId));

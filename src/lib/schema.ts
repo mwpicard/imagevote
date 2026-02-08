@@ -25,6 +25,7 @@ export const sessions = sqliteTable("sessions", {
   votingMode: text("voting_mode", { enum: ["binary", "scale", "pairwise", "guided_tour"] }).notNull().default("binary"),
   language: text("language").notNull().default("en"),
   randomizeOrder: integer("randomize_order", { mode: "boolean" }).notNull().default(false),
+  autoRecord: integer("auto_record", { mode: "boolean" }).notNull().default(false),
   projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   code: text("code").notNull().unique(),
   createdAt: text("created_at").notNull(),
@@ -35,6 +36,7 @@ export const images = sqliteTable("images", {
   sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   videoFilename: text("video_filename"),
+  audioFilename: text("audio_filename"),
   label: text("label"),
   sortOrder: integer("sort_order").notNull().default(0),
 });

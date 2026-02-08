@@ -30,6 +30,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "eval.scaleLow": "Blah!",
     "eval.scaleHigh": "Great!",
     "eval.preferThis": "Prefer This",
+    "eval.playingAudio": "Playing audio...",
     "eval.oops": "Oops",
 
     // Compare
@@ -68,6 +69,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "eval.scaleLow": "¡Mal!",
     "eval.scaleHigh": "¡Genial!",
     "eval.preferThis": "Prefiero esta",
+    "eval.playingAudio": "Reproduciendo audio...",
     "eval.oops": "Ups",
 
     "compare.phaseLabel": "Fase 2 de 2 — Comparar",
@@ -104,6 +106,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "eval.scaleLow": "Dolent!",
     "eval.scaleHigh": "Genial!",
     "eval.preferThis": "Prefereixo aquesta",
+    "eval.playingAudio": "Reproduint àudio...",
     "eval.oops": "Ups",
 
     "compare.phaseLabel": "Fase 2 de 2 — Comparar",

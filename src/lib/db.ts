@@ -37,6 +37,7 @@ sqlite.exec(`
     voting_mode TEXT NOT NULL DEFAULT 'binary',
     language TEXT NOT NULL DEFAULT 'en',
     randomize_order INTEGER NOT NULL DEFAULT 0,
+    auto_record INTEGER NOT NULL DEFAULT 0,
     code TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL
   );
@@ -46,6 +47,7 @@ sqlite.exec(`
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     filename TEXT NOT NULL,
     video_filename TEXT,
+    audio_filename TEXT,
     label TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0
   );
@@ -95,4 +97,10 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN language TEXT NOT NULL DEFAULT 'en'`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN auto_record INTEGER NOT NULL DEFAULT 0`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE images ADD COLUMN audio_filename TEXT`);
 } catch { /* column already exists */ }

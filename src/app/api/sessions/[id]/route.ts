@@ -39,6 +39,7 @@ export async function PUT(
     votingMode: body.votingMode,
     language: body.language,
     randomizeOrder: body.randomizeOrder,
+    autoRecord: body.autoRecord,
   };
   if ("projectId" in body) {
     updates.projectId = body.projectId;
@@ -75,6 +76,10 @@ export async function DELETE(
     if (img.videoFilename) {
       const vidPath = path.join(uploadsDir, img.videoFilename);
       if (fs.existsSync(vidPath)) fs.unlinkSync(vidPath);
+    }
+    if (img.audioFilename) {
+      const audPath = path.join(uploadsDir, img.audioFilename);
+      if (fs.existsSync(audPath)) fs.unlinkSync(audPath);
     }
   }
 
