@@ -127,6 +127,9 @@ export default function NewSessionPage() {
                   className={inputClass}
                 />
               </div>
+              <p className="text-sm text-zinc-400">
+                Background image/video can be added after creating the session.
+              </p>
             </div>
           </div>
 
@@ -159,6 +162,9 @@ export default function NewSessionPage() {
                   className={inputClass}
                 />
               </div>
+              <p className="text-sm text-zinc-400">
+                Background image/video can be added after creating the session.
+              </p>
             </div>
           </div>
 

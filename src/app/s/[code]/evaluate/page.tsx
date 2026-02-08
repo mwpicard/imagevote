@@ -252,21 +252,30 @@ export default function EvaluatePage() {
             </>
           )}
 
-          {session.votingMode === "scale" &&
-            [1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                onClick={() => setVote(n)}
-                className={`flex h-14 w-14 items-center justify-center rounded-2xl border-2 text-lg font-bold transition-all ${
-                  vote === n
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600"
-                }`}
-                aria-label={`Rate ${n}`}
-              >
-                {n}
-              </button>
-            ))}
+          {session.votingMode === "scale" && (
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-3">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setVote(n)}
+                    className={`flex h-14 w-14 items-center justify-center rounded-2xl border-2 text-lg font-bold transition-all ${
+                      vote === n
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600"
+                    }`}
+                    aria-label={`Rate ${n}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div className="flex w-full justify-between px-1">
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">Blah!</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">Great!</span>
+              </div>
+            </div>
+          )}
 
           {session.votingMode === "pairwise" && (
             <button

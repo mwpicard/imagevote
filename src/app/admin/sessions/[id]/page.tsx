@@ -54,6 +54,7 @@ export default function EditSessionPage() {
   const [uploading, setUploading] = useState(false);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [copied, setCopied] = useState(false);
 
   const fetchSession = useCallback(async () => {
     setLoading(true);
@@ -278,10 +279,14 @@ export default function EditSessionPage() {
               onClick={(e) => (e.target as HTMLInputElement).select()}
             />
             <button
-              onClick={() => navigator.clipboard.writeText(sessionUrl)}
-              className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              onClick={() => {
+                navigator.clipboard.writeText(sessionUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="h-10 min-w-[5rem] rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
             >
-              Copy
+              {copied ? "Copied!" : "Copy"}
             </button>
           </div>
           <p className="mt-2 text-sm text-blue-700">
@@ -673,6 +678,34 @@ export default function EditSessionPage() {
               ))}
             </div>
           )}
+
+          {/* Share Section (bottom) */}
+          <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-5">
+            <h2 className="text-sm font-semibold text-blue-900">
+              Share this session
+            </h2>
+            <div className="mt-2 flex items-center gap-3">
+              <input
+                readOnly
+                value={sessionUrl}
+                className="h-10 flex-1 rounded-lg border border-blue-200 bg-white px-3 text-sm text-zinc-700 focus:outline-none"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(sessionUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="h-10 min-w-[5rem] rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-blue-700">
+              Session code: <span className="font-mono font-bold">{session.code}</span>
+            </p>
+          </div>
         </div>
       </div>
     </div>
