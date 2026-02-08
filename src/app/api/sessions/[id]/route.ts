@@ -29,18 +29,23 @@ export async function PUT(
   const { id } = await params;
   const body = await req.json();
 
+  const updates: Record<string, unknown> = {
+    title: body.title,
+    description: body.description,
+    introHeading: body.introHeading,
+    introBody: body.introBody,
+    outroHeading: body.outroHeading,
+    outroBody: body.outroBody,
+    votingMode: body.votingMode,
+    randomizeOrder: body.randomizeOrder,
+  };
+  if ("projectId" in body) {
+    updates.projectId = body.projectId;
+  }
+
   await db
     .update(sessions)
-    .set({
-      title: body.title,
-      description: body.description,
-      introHeading: body.introHeading,
-      introBody: body.introBody,
-      outroHeading: body.outroHeading,
-      outroBody: body.outroBody,
-      votingMode: body.votingMode,
-      randomizeOrder: body.randomizeOrder,
-    })
+    .set(updates)
     .where(eq(sessions.id, id));
 
   const session = await db.query.sessions.findFirst({

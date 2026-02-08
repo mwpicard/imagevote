@@ -4,8 +4,15 @@ import { sessions } from "@/lib/schema";
 import { v4 as uuid } from "uuid";
 import { desc } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const projectId = req.nextUrl.searchParams.get("projectId");
+
   const allSessions = await db.query.sessions.findMany({
+    where: projectId === "none"
+      ? (s, { isNull }) => isNull(s.projectId)
+      : projectId
+        ? (s, { eq }) => eq(s.projectId, projectId)
+        : undefined,
     orderBy: [desc(sessions.createdAt)],
     with: { images: true },
   });
@@ -27,6 +34,7 @@ export async function POST(req: NextRequest) {
     outroBody: body.outroBody || "Your feedback has been recorded.",
     votingMode: body.votingMode || "binary",
     randomizeOrder: body.randomizeOrder || false,
+    projectId: body.projectId || null,
     code,
     createdAt: new Date().toISOString(),
   });

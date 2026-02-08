@@ -1,6 +1,17 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const projectsRelations = relations(projects, ({ many }) => ({
+  sessions: many(sessions),
+}));
+
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
@@ -13,6 +24,7 @@ export const sessions = sqliteTable("sessions", {
   outroMediaFilename: text("outro_media_filename"),
   votingMode: text("voting_mode", { enum: ["binary", "scale", "pairwise", "guided_tour"] }).notNull().default("binary"),
   randomizeOrder: integer("randomize_order", { mode: "boolean" }).notNull().default(false),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   code: text("code").notNull().unique(),
   createdAt: text("created_at").notNull(),
 });
@@ -47,7 +59,8 @@ export const outroRecordings = sqliteTable("outro_recordings", {
   createdAt: text("created_at").notNull(),
 });
 
-export const sessionsRelations = relations(sessions, ({ many }) => ({
+export const sessionsRelations = relations(sessions, ({ one, many }) => ({
+  project: one(projects, { fields: [sessions.projectId], references: [projects.id] }),
   images: many(images),
   responses: many(responses),
   outroRecordings: many(outroRecordings),

@@ -28,10 +28,10 @@ export default function Home() {
         </div>
 
         <Link
-          href="/admin/sessions/new"
+          href="/admin/projects/new"
           className="flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-medium text-white transition-colors hover:bg-blue-700"
         >
-          Create New Session
+          Create New Project
         </Link>
 
         <div className="w-full">
@@ -59,10 +59,10 @@ export default function Home() {
         </div>
 
         <Link
-          href="/admin/sessions"
+          href="/admin/projects"
           className="text-sm text-zinc-500 underline underline-offset-2 transition-colors hover:text-zinc-700"
         >
-          View all sessions
+          View all projects
         </Link>
       </main>
     </div>

@@ -28,6 +28,7 @@ interface Session {
   title: string;
   code: string;
   votingMode: string;
+  projectId: string | null;
   images: ImageData[];
 }
 

@@ -1,28 +1,14 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
-export default function NewSessionPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-          <p className="text-zinc-400">Loading...</p>
-        </div>
-      }
-    >
-      <NewSessionForm />
-    </Suspense>
-  );
-}
-
-function NewSessionForm() {
+export default function NewSessionInProjectPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const projectId = searchParams.get("projectId");
+  const { projectId } = useParams<{ projectId: string }>();
   const [submitting, setSubmitting] = useState(false);
+  const [projectName, setProjectName] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -36,6 +22,12 @@ function NewSessionForm() {
   );
   const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/projects/${projectId}`)
+      .then((r) => r.json())
+      .then((data) => setProjectName(data.name || ""));
+  }, [projectId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,14 +68,19 @@ function NewSessionForm() {
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <Link
-          href={projectId ? `/admin/projects/${projectId}` : "/admin/projects"}
+          href={`/admin/projects/${projectId}`}
           className="text-sm text-zinc-500 hover:text-zinc-700"
         >
-          &larr; {projectId ? "Back to project" : "Back to projects"}
+          &larr; Back to {projectName || "project"}
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-zinc-900">
-          Create New Session
+          New Session
         </h1>
+        {projectName && (
+          <p className="mt-1 text-sm text-zinc-500">
+            in {projectName}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div>
@@ -96,7 +93,7 @@ function NewSessionForm() {
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Product Image Test"
+              placeholder="e.g. Round 1"
               className={inputClass}
             />
           </div>

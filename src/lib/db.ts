@@ -17,6 +17,13 @@ export const db = drizzle(sqlite, { schema });
 
 // Create tables if they don't exist
 sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -81,4 +88,7 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_media_filename TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL`);
 } catch { /* column already exists */ }

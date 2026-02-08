@@ -24,6 +24,7 @@ interface Session {
   outroMediaFilename: string | null;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   randomizeOrder: boolean;
+  projectId: string | null;
   code: string;
   createdAt: string;
   images: ImageItem[];
@@ -226,10 +227,10 @@ export default function EditSessionPage() {
         <div className="text-center">
           <p className="text-zinc-500">Session not found.</p>
           <Link
-            href="/admin/sessions"
+            href="/admin/projects"
             className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
           >
-            Back to sessions
+            Back to projects
           </Link>
         </div>
       </div>
@@ -249,10 +250,10 @@ export default function EditSessionPage() {
         <div className="mb-8 flex items-start justify-between">
           <div>
             <Link
-              href="/admin/sessions"
+              href={session.projectId ? `/admin/projects/${session.projectId}` : "/admin/projects"}
               className="text-sm text-zinc-500 hover:text-zinc-700"
             >
-              &larr; Back to sessions
+              &larr; {session.projectId ? "Back to project" : "Back to projects"}
             </Link>
             <h1 className="mt-1 text-2xl font-bold text-zinc-900">
               Edit Session
