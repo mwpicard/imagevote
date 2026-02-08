@@ -37,6 +37,7 @@ export async function PUT(
     outroHeading: body.outroHeading,
     outroBody: body.outroBody,
     votingMode: body.votingMode,
+    language: body.language,
     randomizeOrder: body.randomizeOrder,
   };
   if ("projectId" in body) {

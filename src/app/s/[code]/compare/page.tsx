@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAudioRecorder } from "@/components/useAudioRecorder";
+import { t, type Locale } from "@/lib/i18n";
 
 interface ImageItem {
   id: string;
@@ -15,6 +16,7 @@ interface Session {
   id: string;
   title: string;
   votingMode: string;
+  language: string;
   code: string;
   images: ImageItem[];
 }
@@ -68,14 +70,14 @@ export default function ComparePage() {
       try {
         const res = await fetch(`/api/sessions/by-code/${params.code}`);
         if (!res.ok) {
-          setError("Session not found.");
+          setError("not_found");
           return;
         }
         const data: Session = await res.json();
         setSession(data);
         setPairs(generatePairs(data.images));
       } catch {
-        setError("Failed to load session.");
+        setError("load_error");
       } finally {
         setLoading(false);
       }
@@ -89,6 +91,16 @@ export default function ComparePage() {
     typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-participant-${params.code}`) ?? ""
       : "";
+
+  const lang = (
+    (typeof window !== "undefined"
+      ? localStorage.getItem(`imagevote-lang-${params.code}`)
+      : null) || session?.language || "en"
+  ) as Locale;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const handleNext = useCallback(async () => {
     if (!session || !currentPair || !selectedWinner) return;
@@ -128,7 +140,7 @@ export default function ComparePage() {
         setSelectedWinner(null);
       }
     } catch {
-      setError("Failed to submit your response. Please try again.");
+      setError("submit_error");
     } finally {
       setSubmitting(false);
     }
@@ -163,14 +175,21 @@ export default function ComparePage() {
   }
 
   if (error || !session || !currentPair) {
+    const errorMsg = error === "not_found"
+      ? t(lang, "intro.sessionNotFound")
+      : error === "load_error"
+        ? t(lang, "intro.loadError")
+        : error === "submit_error"
+          ? t(lang, "eval.submitError")
+          : t(lang, "compare.noPairs");
     return (
       <div className="flex min-h-dvh items-center justify-center bg-white px-6 dark:bg-zinc-950">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-            Oops
+            {t(lang, "eval.oops")}
           </h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-            {error || "No pairs to compare."}
+            {errorMsg}
           </p>
         </div>
       </div>
@@ -182,10 +201,10 @@ export default function ComparePage() {
       {/* Phase label + Progress */}
       <div className="flex flex-col items-center px-4 pt-4 pb-2">
         <span className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-          Phase 2 of 2 — Compare
+          {t(lang, "compare.phaseLabel")}
         </span>
         <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
-          Pair {currentIndex + 1} of {pairs.length}
+          {t(lang, "compare.pairNofM", { n: currentIndex + 1, total: pairs.length })}
         </span>
       </div>
 
@@ -213,7 +232,7 @@ export default function ComparePage() {
           <img
             src={`/api/uploads?file=${encodeURIComponent(currentPair.imageA.filename)}`}
             alt={currentPair.imageA.label || "Image A"}
-            className="max-h-[50dvh] w-full object-contain"
+            className="max-h-[40dvh] sm:max-h-[50dvh] w-full object-contain"
           />
           {selectedWinner === currentPair.imageA.id && (
             <div className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
@@ -231,7 +250,7 @@ export default function ComparePage() {
 
         {/* Divider */}
         <div className="flex flex-col items-center gap-1 text-zinc-300 dark:text-zinc-600">
-          <span className="text-xs font-bold">VS</span>
+          <span className="text-xs font-bold">{t(lang, "compare.vs")}</span>
         </div>
 
         {/* Image B */}
@@ -246,7 +265,7 @@ export default function ComparePage() {
           <img
             src={`/api/uploads?file=${encodeURIComponent(currentPair.imageB.filename)}`}
             alt={currentPair.imageB.label || "Image B"}
-            className="max-h-[50dvh] w-full object-contain"
+            className="max-h-[40dvh] sm:max-h-[50dvh] w-full object-contain"
           />
           {selectedWinner === currentPair.imageB.id && (
             <div className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
@@ -265,7 +284,7 @@ export default function ComparePage() {
 
       {/* Tap instruction */}
       <p className="text-center text-sm text-zinc-400 dark:text-zinc-500">
-        Tap the image you prefer
+        {t(lang, "compare.tapInstruction")}
       </p>
 
       {/* Controls */}
@@ -293,12 +312,12 @@ export default function ComparePage() {
           </button>
           {isRecording && (
             <span className="text-xs font-medium text-red-500">
-              Recording...
+              {t(lang, "eval.recording")}
             </span>
           )}
           {!isRecording && audioBlob && audioBlob.size > 0 && (
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-              Audio recorded
+              {t(lang, "eval.audioRecorded")}
             </span>
           )}
         </div>
@@ -326,10 +345,10 @@ export default function ComparePage() {
           className="h-14 w-full max-w-xs rounded-2xl bg-zinc-900 text-lg font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
         >
           {submitting
-            ? "Submitting..."
+            ? t(lang, "eval.submitting")
             : currentIndex + 1 >= pairs.length
-              ? "Finish"
-              : "Next"}
+              ? t(lang, "eval.finish")
+              : t(lang, "eval.next")}
         </button>
       </div>
     </div>

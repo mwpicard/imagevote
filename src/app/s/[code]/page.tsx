@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { t, LOCALES, type Locale } from "@/lib/i18n";
 
 interface Session {
   id: string;
@@ -13,6 +14,7 @@ interface Session {
   outroBody: string;
   outroMediaFilename: string | null;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
+  language: string;
   randomizeOrder: boolean;
   code: string;
   images: { id: string }[];
@@ -24,19 +26,22 @@ export default function IntroPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lang, setLang] = useState<Locale>("en");
 
   useEffect(() => {
     async function fetchSession() {
       try {
         const res = await fetch(`/api/sessions/by-code/${params.code}`);
         if (!res.ok) {
-          setError("Session not found.");
+          setError("not_found");
           return;
         }
         const data = await res.json();
         setSession(data);
+        const stored = localStorage.getItem(`imagevote-lang-${params.code}`);
+        setLang((stored || data.language || "en") as Locale);
       } catch {
-        setError("Failed to load session.");
+        setError("load_error");
       } finally {
         setLoading(false);
       }
@@ -56,6 +61,15 @@ export default function IntroPage() {
     }
   }, [params.code]);
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  function handleLanguageChange(newLang: Locale) {
+    setLang(newLang);
+    localStorage.setItem(`imagevote-lang-${params.code}`, newLang);
+  }
+
   function handleStart() {
     router.push(`/s/${params.code}/evaluate`);
   }
@@ -69,14 +83,19 @@ export default function IntroPage() {
   }
 
   if (error || !session) {
+    const errorMsg = error === "not_found"
+      ? t(lang, "intro.sessionNotFound")
+      : error === "load_error"
+        ? t(lang, "intro.loadError")
+        : t(lang, "intro.sessionNotFound");
     return (
       <div className="flex min-h-dvh items-center justify-center bg-white px-6 dark:bg-zinc-950">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-            Oops
+            {t(lang, "eval.oops")}
           </h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-            {error || "Session not found."}
+            {errorMsg}
           </p>
         </div>
       </div>
@@ -119,29 +138,48 @@ export default function IntroPage() {
         </p>
 
         <p className={`mt-8 text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
-          {session.votingMode === "guided_tour" ? (
-            <>
-              You&apos;ll evaluate {session.images.length} image
-              {session.images.length !== 1 ? "s" : ""}, then compare{" "}
-              {(session.images.length * (session.images.length - 1)) / 2} pairs
-            </>
-          ) : (
-            <>
-              You&apos;ll see {session.images.length} image
-              {session.images.length !== 1 ? "s" : ""}
-            </>
-          )}
+          {session.votingMode === "guided_tour"
+            ? t(lang, "intro.guidedTourCount", {
+                count: session.images.length,
+                plural: session.images.length !== 1 ? "s" : "",
+                pairs: (session.images.length * (session.images.length - 1)) / 2,
+              })
+            : t(lang, "intro.imageCount", {
+                count: session.images.length,
+                plural: session.images.length !== 1 ? "s" : "",
+              })}
         </p>
+
+        {/* Language picker */}
+        <div className="mt-8 flex items-center gap-1.5">
+          {LOCALES.map((l) => (
+            <button
+              key={l.value}
+              onClick={() => handleLanguageChange(l.value)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                lang === l.value
+                  ? hasMedia
+                    ? "bg-white text-zinc-900"
+                    : "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : hasMedia
+                    ? "bg-white/20 text-white hover:bg-white/30"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
 
         <button
           onClick={handleStart}
-          className={`mt-10 h-14 w-full max-w-xs rounded-2xl text-lg font-semibold transition-colors ${
+          className={`mt-6 h-14 w-full max-w-xs rounded-2xl text-lg font-semibold transition-colors ${
             hasMedia
               ? "bg-white text-zinc-900 hover:bg-white/90 active:bg-white/80"
               : "bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
           }`}
         >
-          Start
+          {t(lang, "intro.start")}
         </button>
       </div>
     </div>

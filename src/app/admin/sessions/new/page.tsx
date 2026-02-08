@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { LOCALES, type Locale } from "@/lib/i18n";
 
 export default function NewSessionPage() {
   return (
@@ -35,6 +36,7 @@ function NewSessionForm() {
     "Your feedback has been recorded."
   );
   const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
+  const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -54,6 +56,7 @@ function NewSessionForm() {
           outroHeading,
           outroBody,
           votingMode,
+          language,
           randomizeOrder,
           projectId,
         }),
@@ -74,7 +77,7 @@ function NewSessionForm() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-12">
         <Link
           href={projectId ? `/admin/projects/${projectId}` : "/admin/projects"}
           className="text-sm text-zinc-500 hover:text-zinc-700"
@@ -224,6 +227,26 @@ function NewSessionForm() {
                 <label htmlFor="randomizeOrder" className="text-sm text-zinc-700">
                   Randomize image order for each participant
                 </label>
+              </div>
+              <div>
+                <label htmlFor="language" className={labelClass}>
+                  Participant Language
+                </label>
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as Locale)}
+                  className={inputClass}
+                >
+                  {LOCALES.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  UI text shown to participants will be in this language. Intro/outro text above is shown as-is.
+                </p>
               </div>
             </div>
           </div>

@@ -35,6 +35,7 @@ sqlite.exec(`
     intro_media_filename TEXT,
     outro_media_filename TEXT,
     voting_mode TEXT NOT NULL DEFAULT 'binary',
+    language TEXT NOT NULL DEFAULT 'en',
     randomize_order INTEGER NOT NULL DEFAULT 0,
     code TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL
@@ -91,4 +92,7 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN language TEXT NOT NULL DEFAULT 'en'`);
 } catch { /* column already exists */ }

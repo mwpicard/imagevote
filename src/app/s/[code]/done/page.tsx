@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAudioRecorder } from "@/components/useAudioRecorder";
+import { t, type Locale } from "@/lib/i18n";
 
 interface Session {
   id: string;
   outroHeading: string;
   outroBody: string;
   outroMediaFilename: string | null;
+  language: string;
   code: string;
   images: { id: string }[];
 }
@@ -29,13 +31,13 @@ export default function DonePage() {
       try {
         const res = await fetch(`/api/sessions/by-code/${params.code}`);
         if (!res.ok) {
-          setError("Session not found.");
+          setError("not_found");
           return;
         }
         const data = await res.json();
         setSession(data);
       } catch {
-        setError("Failed to load session.");
+        setError("load_error");
       } finally {
         setLoading(false);
       }
@@ -48,6 +50,16 @@ export default function DonePage() {
     typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-participant-${params.code}`) ?? ""
       : "";
+
+  const lang = (
+    (typeof window !== "undefined"
+      ? localStorage.getItem(`imagevote-lang-${params.code}`)
+      : null) || session?.language || "en"
+  ) as Locale;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   async function handleMicToggle() {
     if (isRecording) {
@@ -81,7 +93,7 @@ export default function DonePage() {
 
       setSubmitted(true);
     } catch {
-      setError("Failed to submit your recording. Please try again.");
+      setError("submit_error");
     } finally {
       setSubmitting(false);
     }
@@ -96,14 +108,21 @@ export default function DonePage() {
   }
 
   if (error || !session) {
+    const errorMsg = error === "not_found"
+      ? t(lang, "intro.sessionNotFound")
+      : error === "load_error"
+        ? t(lang, "intro.loadError")
+        : error === "submit_error"
+          ? t(lang, "done.submitError")
+          : t(lang, "intro.sessionNotFound");
     return (
       <div className="flex min-h-dvh items-center justify-center bg-white px-6 dark:bg-zinc-950">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-            Oops
+            {t(lang, "eval.oops")}
           </h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-            {error || "Session not found."}
+            {errorMsg}
           </p>
         </div>
       </div>
@@ -164,7 +183,7 @@ export default function DonePage() {
         {!submitted && (
           <div className="mt-10 flex flex-col items-center gap-4">
             <p className={`text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
-              Want to share any final thoughts?
+              {t(lang, "done.finalThoughts")}
             </p>
 
             <button
@@ -193,14 +212,14 @@ export default function DonePage() {
 
             {isRecording && (
               <span className="text-sm font-medium text-red-500">
-                Recording...
+                {t(lang, "eval.recording")}
               </span>
             )}
 
             {!isRecording && audioBlob && audioBlob.size > 0 && (
               <div className="flex flex-col items-center gap-3">
                 <span className={`text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
-                  Audio recorded
+                  {t(lang, "eval.audioRecorded")}
                 </span>
                 <button
                   onClick={handleSubmitRecording}
@@ -211,7 +230,7 @@ export default function DonePage() {
                       : "bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
                   }`}
                 >
-                  {submitting ? "Submitting..." : "Submit Recording"}
+                  {submitting ? t(lang, "done.submitting") : t(lang, "done.submitRecording")}
                 </button>
               </div>
             )}
@@ -220,12 +239,12 @@ export default function DonePage() {
 
         {submitted && (
           <p className={`mt-8 text-sm font-medium ${hasMedia ? "text-green-300" : "text-green-600 dark:text-green-400"}`}>
-            Your recording has been submitted. Thank you!
+            {t(lang, "done.confirmation")}
           </p>
         )}
 
         <p className={`mt-12 text-sm ${hasMedia ? "text-white/40" : "text-zinc-300 dark:text-zinc-700"}`}>
-          You may close this tab.
+          {t(lang, "done.closeTab")}
         </p>
       </div>
     </div>

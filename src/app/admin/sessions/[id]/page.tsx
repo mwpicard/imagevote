@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { LOCALES, type Locale } from "@/lib/i18n";
 
 interface ImageItem {
   id: string;
@@ -23,6 +24,7 @@ interface Session {
   outroBody: string;
   outroMediaFilename: string | null;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
+  language: string;
   randomizeOrder: boolean;
   projectId: string | null;
   code: string;
@@ -46,6 +48,7 @@ export default function EditSessionPage() {
   const [outroHeading, setOutroHeading] = useState("");
   const [outroBody, setOutroBody] = useState("");
   const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
+  const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
 
   // Image upload fields
@@ -71,6 +74,7 @@ export default function EditSessionPage() {
         setOutroHeading(data.outroHeading);
         setOutroBody(data.outroBody);
         setVotingMode(data.votingMode);
+        setLanguage((data.language || "en") as Locale);
         setRandomizeOrder(data.randomizeOrder);
       }
     } finally {
@@ -98,6 +102,7 @@ export default function EditSessionPage() {
           outroHeading,
           outroBody,
           votingMode,
+          language,
           randomizeOrder,
         }),
       });
@@ -245,9 +250,9 @@ export default function EditSessionPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-12">
         {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <Link
               href={session.projectId ? `/admin/projects/${session.projectId}` : "/admin/projects"}
@@ -272,7 +277,7 @@ export default function EditSessionPage() {
           <h2 className="text-sm font-semibold text-blue-900">
             Share this session
           </h2>
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <input
               readOnly
               value={sessionUrl}
@@ -510,6 +515,26 @@ export default function EditSessionPage() {
                   Randomize image order for each participant
                 </label>
               </div>
+              <div>
+                <label htmlFor="language" className={labelClass}>
+                  Participant Language
+                </label>
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as Locale)}
+                  className={inputClass}
+                >
+                  {LOCALES.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  UI text shown to participants will be in this language. Intro/outro text above is shown as-is.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -685,7 +710,7 @@ export default function EditSessionPage() {
             <h2 className="text-sm font-semibold text-blue-900">
               Share this session
             </h2>
-            <div className="mt-2 flex items-center gap-3">
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <input
                 readOnly
                 value={sessionUrl}

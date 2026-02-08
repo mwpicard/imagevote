@@ -23,6 +23,7 @@ export const sessions = sqliteTable("sessions", {
   introMediaFilename: text("intro_media_filename"),
   outroMediaFilename: text("outro_media_filename"),
   votingMode: text("voting_mode", { enum: ["binary", "scale", "pairwise", "guided_tour"] }).notNull().default("binary"),
+  language: text("language").notNull().default("en"),
   randomizeOrder: integer("randomize_order", { mode: "boolean" }).notNull().default(false),
   projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   code: text("code").notNull().unique(),

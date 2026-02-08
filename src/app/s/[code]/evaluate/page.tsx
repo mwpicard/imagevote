@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAudioRecorder } from "@/components/useAudioRecorder";
+import { t, type Locale } from "@/lib/i18n";
 
 interface ImageItem {
   id: string;
@@ -20,6 +21,7 @@ interface Session {
   outroHeading: string;
   outroBody: string;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
+  language: string;
   randomizeOrder: boolean;
   code: string;
   images: ImageItem[];
@@ -56,7 +58,7 @@ export default function EvaluatePage() {
       try {
         const res = await fetch(`/api/sessions/by-code/${params.code}`);
         if (!res.ok) {
-          setError("Session not found.");
+          setError("not_found");
           return;
         }
         const data: Session = await res.json();
@@ -67,7 +69,7 @@ export default function EvaluatePage() {
           : data.images;
         setOrderedImages(imgs);
       } catch {
-        setError("Failed to load session.");
+        setError("load_error");
       } finally {
         setLoading(false);
       }
@@ -81,6 +83,16 @@ export default function EvaluatePage() {
     typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-participant-${params.code}`) ?? ""
       : "";
+
+  const lang = (
+    (typeof window !== "undefined"
+      ? localStorage.getItem(`imagevote-lang-${params.code}`)
+      : null) || session?.language || "en"
+  ) as Locale;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const handleNext = useCallback(async () => {
     if (!session || !currentImage || vote === null) return;
@@ -125,7 +137,7 @@ export default function EvaluatePage() {
         setVote(null);
       }
     } catch {
-      setError("Failed to submit your response. Please try again.");
+      setError("submit_error");
     } finally {
       setSubmitting(false);
     }
@@ -160,14 +172,21 @@ export default function EvaluatePage() {
   }
 
   if (error || !session || !currentImage) {
+    const errorMsg = error === "not_found"
+      ? t(lang, "intro.sessionNotFound")
+      : error === "load_error"
+        ? t(lang, "intro.loadError")
+        : error === "submit_error"
+          ? t(lang, "eval.submitError")
+          : t(lang, "eval.noImages");
     return (
       <div className="flex min-h-dvh items-center justify-center bg-white px-6 dark:bg-zinc-950">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-            Oops
+            {t(lang, "eval.oops")}
           </h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-            {error || "No images to evaluate."}
+            {errorMsg}
           </p>
         </div>
       </div>
@@ -180,11 +199,11 @@ export default function EvaluatePage() {
       <div className="flex flex-col items-center px-4 pt-4 pb-2">
         {session.votingMode === "guided_tour" && (
           <span className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-            Phase 1 of 2 — Rate
+            {t(lang, "eval.phaseLabel")}
           </span>
         )}
         <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
-          {currentIndex + 1} of {orderedImages.length}
+          {t(lang, "eval.nOfM", { n: currentIndex + 1, total: orderedImages.length })}
         </span>
       </div>
 
@@ -203,7 +222,7 @@ export default function EvaluatePage() {
         <img
           src={`/api/uploads?file=${encodeURIComponent(currentImage.filename)}`}
           alt={currentImage.label || `Image ${currentIndex + 1}`}
-          className="max-h-[55dvh] w-full rounded-xl object-contain"
+          className="evaluate-image max-h-[55dvh] w-full rounded-xl object-contain"
         />
       </div>
 
@@ -215,7 +234,7 @@ export default function EvaluatePage() {
             onClick={() => setShowVideo(true)}
             className="text-sm font-medium text-zinc-400 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:decoration-zinc-600 dark:hover:text-zinc-300"
           >
-            See video
+            {t(lang, "eval.seeVideo")}
           </button>
         )}
 
@@ -271,8 +290,8 @@ export default function EvaluatePage() {
                 ))}
               </div>
               <div className="flex w-full justify-between px-1">
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">Blah!</span>
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">Great!</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">{t(lang, "eval.scaleLow")}</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">{t(lang, "eval.scaleHigh")}</span>
               </div>
             </div>
           )}
@@ -286,7 +305,7 @@ export default function EvaluatePage() {
                   : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600"
               }`}
             >
-              Prefer This
+              {t(lang, "eval.preferThis")}
             </button>
           )}
         </div>
@@ -314,12 +333,12 @@ export default function EvaluatePage() {
           </button>
           {isRecording && (
             <span className="text-xs font-medium text-red-500">
-              Recording...
+              {t(lang, "eval.recording")}
             </span>
           )}
           {!isRecording && audioBlob && audioBlob.size > 0 && (
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-              Audio recorded
+              {t(lang, "eval.audioRecorded")}
             </span>
           )}
         </div>
@@ -331,12 +350,12 @@ export default function EvaluatePage() {
           className="h-14 w-full max-w-xs rounded-2xl bg-zinc-900 text-lg font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
         >
           {submitting
-            ? "Submitting..."
+            ? t(lang, "eval.submitting")
             : currentIndex + 1 >= orderedImages.length
               ? session.votingMode === "guided_tour"
-                ? "Next Phase"
-                : "Finish"
-              : "Next"}
+                ? t(lang, "eval.nextPhase")
+                : t(lang, "eval.finish")
+              : t(lang, "eval.next")}
         </button>
       </div>
 

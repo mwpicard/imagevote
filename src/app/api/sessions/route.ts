@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     outroHeading: body.outroHeading || "Thank you!",
     outroBody: body.outroBody || "Your feedback has been recorded.",
     votingMode: body.votingMode || "binary",
+    language: body.language || "en",
     randomizeOrder: body.randomizeOrder || false,
     projectId: body.projectId || null,
     code,

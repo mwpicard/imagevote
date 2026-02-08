@@ -5,3 +5,10 @@ body {
   color: #111827;
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+/* Reduce image height on landscape phones/short viewports */
+@media (orientation: landscape) and (max-height: 500px) {
+  .evaluate-image {
+    max-height: 35dvh;
+  }
+}
