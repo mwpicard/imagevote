@@ -23,7 +23,7 @@ export default function Home() {
             ImageVote
           </h1>
           <p className="mt-2 text-lg text-zinc-500">
-            Create and share image voting sessions
+            Create and share image voting surveys
           </p>
         </div>
 
@@ -41,7 +41,7 @@ export default function Home() {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Enter session code"
+              placeholder="Enter survey code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => {

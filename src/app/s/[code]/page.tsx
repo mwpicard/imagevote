@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { t, LOCALES, type Locale } from "@/lib/i18n";
 
-interface Session {
+interface Survey {
   id: string;
   title: string;
   introHeading: string;
@@ -23,21 +23,25 @@ interface Session {
 export default function IntroPage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lang, setLang] = useState<Locale>("en");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [nameError, setNameError] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch(`/api/sessions/by-code/${params.code}`);
+        const res = await fetch(`/api/surveys/by-code/${params.code}`);
         if (!res.ok) {
           setError("not_found");
           return;
         }
         const data = await res.json();
-        setSession(data);
+        setSurvey(data);
         const stored = localStorage.getItem(`imagevote-lang-${params.code}`);
         setLang((stored || data.language || "en") as Locale);
       } catch {
@@ -50,17 +54,6 @@ export default function IntroPage() {
     fetchSession();
   }, [params.code]);
 
-  // Generate participantId on mount
-  useEffect(() => {
-    const storageKey = `imagevote-participant-${params.code}`;
-    if (!localStorage.getItem(storageKey)) {
-      const id = typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem(storageKey, id);
-    }
-  }, [params.code]);
-
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
@@ -70,8 +63,33 @@ export default function IntroPage() {
     localStorage.setItem(`imagevote-lang-${params.code}`, newLang);
   }
 
-  function handleStart() {
-    router.push(`/s/${params.code}/evaluate`);
+  async function handleStart() {
+    if (!firstName.trim()) {
+      setNameError(true);
+      return;
+    }
+    if (!survey) return;
+
+    setStarting(true);
+    try {
+      const res = await fetch(`/api/surveys/${survey.id}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create participant");
+
+      const data = await res.json();
+      localStorage.setItem(`imagevote-participant-${params.code}`, data.id);
+      router.push(`/s/${params.code}/evaluate`);
+    } catch {
+      setError("load_error");
+      setStarting(false);
+    }
   }
 
   if (loading) {
@@ -82,7 +100,7 @@ export default function IntroPage() {
     );
   }
 
-  if (error || !session) {
+  if (error || !survey) {
     const errorMsg = error === "not_found"
       ? t(lang, "intro.sessionNotFound")
       : error === "load_error"
@@ -102,8 +120,8 @@ export default function IntroPage() {
     );
   }
 
-  const hasMedia = !!session.introMediaFilename;
-  const isVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(session.introMediaFilename!);
+  const hasMedia = !!survey.introMediaFilename;
+  const isVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(survey.introMediaFilename!);
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-white px-6 dark:bg-zinc-950">
@@ -111,7 +129,7 @@ export default function IntroPage() {
       {hasMedia && (
         isVideo ? (
           <video
-            src={`/api/uploads?file=${encodeURIComponent(session.introMediaFilename!)}`}
+            src={`/api/uploads?file=${encodeURIComponent(survey.introMediaFilename!)}`}
             autoPlay
             loop
             muted
@@ -120,7 +138,7 @@ export default function IntroPage() {
           />
         ) : (
           <img
-            src={`/api/uploads?file=${encodeURIComponent(session.introMediaFilename!)}`}
+            src={`/api/uploads?file=${encodeURIComponent(survey.introMediaFilename!)}`}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -130,23 +148,23 @@ export default function IntroPage() {
 
       <div className={`relative z-10 flex w-full max-w-lg flex-col items-center text-center ${hasMedia ? "text-white" : ""}`}>
         <h1 className={`text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${hasMedia ? "text-white" : "text-zinc-900 dark:text-zinc-50"}`}>
-          {session.introHeading}
+          {survey.introHeading}
         </h1>
 
         <p className={`mt-6 text-lg leading-relaxed ${hasMedia ? "text-white/80" : "text-zinc-600 dark:text-zinc-400"}`}>
-          {session.introBody}
+          {survey.introBody}
         </p>
 
         <p className={`mt-8 text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
-          {session.votingMode === "guided_tour"
+          {survey.votingMode === "guided_tour"
             ? t(lang, "intro.guidedTourCount", {
-                count: session.images.length,
-                plural: session.images.length !== 1 ? "s" : "",
-                pairs: (session.images.length * (session.images.length - 1)) / 2,
+                count: survey.images.length,
+                plural: survey.images.length !== 1 ? "s" : "",
+                pairs: (survey.images.length * (survey.images.length - 1)) / 2,
               })
             : t(lang, "intro.imageCount", {
-                count: session.images.length,
-                plural: session.images.length !== 1 ? "s" : "",
+                count: survey.images.length,
+                plural: survey.images.length !== 1 ? "s" : "",
               })}
         </p>
 
@@ -171,15 +189,52 @@ export default function IntroPage() {
           ))}
         </div>
 
+        {/* Name fields */}
+        <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
+          <div>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => {
+                setFirstName(e.target.value);
+                if (nameError) setNameError(false);
+              }}
+              placeholder={t(lang, "intro.firstName")}
+              className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
+                hasMedia
+                  ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
+                  : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+              } ${nameError ? "border-red-400 dark:border-red-500" : ""}`}
+            />
+            {nameError && (
+              <p className="mt-1 text-xs text-red-500">
+                {t(lang, "intro.firstNameRequired")}
+              </p>
+            )}
+          </div>
+          <input
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder={t(lang, "intro.lastName")}
+            className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
+              hasMedia
+                ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
+                : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+            }`}
+          />
+        </div>
+
         <button
           onClick={handleStart}
-          className={`mt-6 h-14 w-full max-w-xs rounded-2xl text-lg font-semibold transition-colors ${
+          disabled={starting}
+          className={`mt-6 h-14 w-full max-w-xs rounded-2xl text-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             hasMedia
               ? "bg-white text-zinc-900 hover:bg-white/90 active:bg-white/80"
               : "bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
           }`}
         >
-          {t(lang, "intro.start")}
+          {starting ? t(lang, "eval.submitting") : t(lang, "intro.start")}
         </button>
       </div>
     </div>

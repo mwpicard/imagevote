@@ -6,14 +6,14 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
-  const session = await db.query.sessions.findFirst({
+  const survey = await db.query.surveys.findFirst({
     where: (s, { eq }) => eq(s.code, code),
     with: { images: { orderBy: (img, { asc }) => [asc(img.sortOrder)] } },
   });
 
-  if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (!survey) {
+    return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
 
-  return NextResponse.json(session);
+  return NextResponse.json(survey);
 }

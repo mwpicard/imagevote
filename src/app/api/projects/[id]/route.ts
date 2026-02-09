@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projects, sessions } from "@/lib/schema";
+import { projects, surveys } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(
@@ -11,7 +11,7 @@ export async function GET(
   const project = await db.query.projects.findFirst({
     where: (p, { eq }) => eq(p.id, id),
     with: {
-      sessions: {
+      surveys: {
         with: { images: true },
         orderBy: (s, { desc }) => [desc(s.createdAt)],
       },
@@ -53,11 +53,11 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  // Orphan sessions (SET NULL via FK) then delete project
+  // Orphan surveys (SET NULL via FK) then delete project
   await db
-    .update(sessions)
+    .update(surveys)
     .set({ projectId: null })
-    .where(eq(sessions.projectId, id));
+    .where(eq(surveys.projectId, id));
 
   await db.delete(projects).where(eq(projects.id, id));
 

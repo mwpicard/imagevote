@@ -5,37 +5,54 @@ import { useParams } from "next/navigation";
 import { useAudioRecorder } from "@/components/useAudioRecorder";
 import { t, type Locale } from "@/lib/i18n";
 
-interface Session {
+interface Survey {
   id: string;
   outroHeading: string;
   outroBody: string;
   outroMediaFilename: string | null;
   language: string;
   code: string;
-  images: { id: string }[];
+  images: { id: string; filename: string; label: string | null }[];
+}
+
+interface Favourite {
+  id: string;
+  filename: string;
+  label: string | null;
 }
 
 export default function DonePage() {
   const params = useParams<{ code: string }>();
-  const [session, setSession] = useState<Session | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [favourites, setFavourites] = useState<Favourite[]>([]);
+  const [favouritesLoaded, setFavouritesLoaded] = useState(false);
+  const [email, setEmail] = useState("");
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+
   const { isRecording, audioBlob, startRecording, stopRecording } =
     useAudioRecorder();
+
+  const participantId =
+    typeof window !== "undefined"
+      ? localStorage.getItem(`imagevote-participant-${params.code}`) ?? ""
+      : "";
 
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch(`/api/sessions/by-code/${params.code}`);
+        const res = await fetch(`/api/surveys/by-code/${params.code}`);
         if (!res.ok) {
           setError("not_found");
           return;
         }
         const data = await res.json();
-        setSession(data);
+        setSurvey(data);
       } catch {
         setError("load_error");
       } finally {
@@ -46,15 +63,33 @@ export default function DonePage() {
     fetchSession();
   }, [params.code]);
 
-  const participantId =
-    typeof window !== "undefined"
-      ? localStorage.getItem(`imagevote-participant-${params.code}`) ?? ""
-      : "";
+  // Fetch favourites once survey is loaded
+  useEffect(() => {
+    if (!survey || !participantId) return;
+
+    async function fetchFavourites() {
+      try {
+        const res = await fetch(
+          `/api/surveys/${survey!.id}/my-favourites?participantId=${encodeURIComponent(participantId)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setFavourites(data.favourites ?? []);
+        }
+      } catch {
+        // Silently fail — favourites are a nice-to-have
+      } finally {
+        setFavouritesLoaded(true);
+      }
+    }
+
+    fetchFavourites();
+  }, [survey, participantId]);
 
   const lang = (
     (typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-lang-${params.code}`)
-      : null) || session?.language || "en"
+      : null) || survey?.language || "en"
   ) as Locale;
 
   useEffect(() => {
@@ -70,7 +105,7 @@ export default function DonePage() {
   }
 
   async function handleSubmitRecording() {
-    if (!session || !audioBlob || audioBlob.size === 0) return;
+    if (!survey || !audioBlob || audioBlob.size === 0) return;
 
     setSubmitting(true);
     try {
@@ -80,7 +115,7 @@ export default function DonePage() {
       formData.append("audio", audioBlob, `outro-recording${ext}`);
 
       const res = await fetch(
-        `/api/sessions/${session.id}/outro-recording`,
+        `/api/surveys/${survey.id}/outro-recording`,
         {
           method: "POST",
           body: formData,
@@ -99,6 +134,36 @@ export default function DonePage() {
     }
   }
 
+  async function handleSubmitOrder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!survey || !email.trim()) return;
+
+    const imageIds = favourites.length > 0
+      ? favourites.map((f) => f.id)
+      : survey.images.map((img) => img.id);
+    if (imageIds.length === 0) return;
+
+    setOrderSubmitting(true);
+    try {
+      const res = await fetch(`/api/surveys/${survey.id}/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participantId,
+          email: email.trim(),
+          imageIds,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to submit order");
+      setOrderSubmitted(true);
+    } catch {
+      // Keep form visible so user can retry
+    } finally {
+      setOrderSubmitting(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-white dark:bg-zinc-950">
@@ -107,7 +172,7 @@ export default function DonePage() {
     );
   }
 
-  if (error || !session) {
+  if (error || !survey) {
     const errorMsg = error === "not_found"
       ? t(lang, "intro.sessionNotFound")
       : error === "load_error"
@@ -129,8 +194,14 @@ export default function DonePage() {
     );
   }
 
-  const hasMedia = !!session.outroMediaFilename;
-  const isOutroVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(session.outroMediaFilename!);
+  const hasMedia = !!survey.outroMediaFilename;
+  const isOutroVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(survey.outroMediaFilename!);
+  const hasFavourites = favouritesLoaded && favourites.length > 0;
+  // If no direct favourites, show all survey images as fallback
+  const displayImages: Favourite[] = hasFavourites
+    ? favourites
+    : survey.images.map((img) => ({ id: img.id, filename: img.filename, label: img.label }));
+  const plural = displayImages.length > 1;
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-white px-6 dark:bg-zinc-950">
@@ -138,7 +209,7 @@ export default function DonePage() {
       {hasMedia && (
         isOutroVideo ? (
           <video
-            src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename!)}`}
+            src={`/api/uploads?file=${encodeURIComponent(survey.outroMediaFilename!)}`}
             autoPlay
             loop
             muted
@@ -147,7 +218,7 @@ export default function DonePage() {
           />
         ) : (
           <img
-            src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename!)}`}
+            src={`/api/uploads?file=${encodeURIComponent(survey.outroMediaFilename!)}`}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -172,12 +243,78 @@ export default function DonePage() {
         </div>
 
         <h1 className={`mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${hasMedia ? "text-white" : "text-zinc-900 dark:text-zinc-50"}`}>
-          {session.outroHeading}
+          {survey.outroHeading}
         </h1>
 
         <p className={`mt-6 text-lg leading-relaxed ${hasMedia ? "text-white/80" : "text-zinc-600 dark:text-zinc-400"}`}>
-          {session.outroBody}
+          {survey.outroBody}
         </p>
+
+        {/* Favourites / images section */}
+        {favouritesLoaded && displayImages.length > 0 && (
+          <div className="mt-8 flex w-full flex-col items-center gap-4">
+            {hasFavourites && (
+              <h2 className={`text-lg font-semibold ${hasMedia ? "text-white" : "text-zinc-800 dark:text-zinc-200"}`}>
+                {t(lang, plural ? "done.yourFavourites" : "done.yourFavourite")}
+              </h2>
+            )}
+
+            <div className="flex flex-wrap justify-center gap-3">
+              {displayImages.map((img) => (
+                <div key={img.id} className="flex flex-col items-center gap-1">
+                  <img
+                    src={`/api/uploads?file=${encodeURIComponent(img.filename)}`}
+                    alt={img.label || ""}
+                    className="h-32 w-32 rounded-xl object-cover shadow-lg sm:h-40 sm:w-40"
+                  />
+                  {img.label && (
+                    <span className={`text-xs font-medium ${hasMedia ? "text-white/70" : "text-zinc-500 dark:text-zinc-400"}`}>
+                      {img.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Order CTA */}
+            {!orderSubmitted ? (
+              <form onSubmit={handleSubmitOrder} className="mt-2 flex w-full max-w-sm flex-col items-center gap-3">
+                <p className={`text-sm ${hasMedia ? "text-white/70" : "text-zinc-500 dark:text-zinc-400"}`}>
+                  {t(lang, plural ? "done.wantToOrderPlural" : "done.wantToOrder")}
+                </p>
+                <div className="flex w-full gap-2">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t(lang, "done.enterEmail")}
+                    className={`h-12 flex-1 rounded-xl border px-4 text-sm outline-none transition-colors ${
+                      hasMedia
+                        ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
+                        : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+                    }`}
+                  />
+                  <button
+                    type="submit"
+                    disabled={orderSubmitting}
+                    className={`h-12 rounded-xl px-6 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                      hasMedia
+                        ? "bg-white text-zinc-900 hover:bg-white/90 active:bg-white/80"
+                        : "bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+                    }`}
+                  >
+                    {t(lang, "done.submitOrder")}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className={`mt-2 text-sm font-medium ${hasMedia ? "text-green-300" : "text-green-600 dark:text-green-400"}`}>
+                {t(lang, "done.orderConfirmation")}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Record final thoughts */}
         {!submitted && (

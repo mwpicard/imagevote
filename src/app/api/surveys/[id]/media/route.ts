@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sessions } from "@/lib/schema";
+import { surveys } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import path from "path";
@@ -18,7 +18,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: sessionId } = await params;
+  const { id: surveyId } = await params;
   ensureUploadsDir();
 
   const formData = await req.formData();
@@ -33,14 +33,14 @@ export async function POST(
   }
 
   // Delete old file if exists
-  const session = await db.query.sessions.findFirst({
-    where: (s, { eq }) => eq(s.id, sessionId),
+  const survey = await db.query.surveys.findFirst({
+    where: (s, { eq }) => eq(s.id, surveyId),
   });
-  if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (!survey) {
+    return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
 
-  const oldFilename = target === "intro" ? session.introMediaFilename : session.outroMediaFilename;
+  const oldFilename = target === "intro" ? survey.introMediaFilename : survey.outroMediaFilename;
   if (oldFilename) {
     const oldPath = path.join(uploadsDir, oldFilename);
     if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
@@ -52,11 +52,11 @@ export async function POST(
   const buffer = Buffer.from(await file.arrayBuffer());
   fs.writeFileSync(path.join(uploadsDir, filename), buffer);
 
-  // Update session
+  // Update survey
   const updateData = target === "intro"
     ? { introMediaFilename: filename }
     : { outroMediaFilename: filename };
-  await db.update(sessions).set(updateData).where(eq(sessions.id, sessionId));
+  await db.update(surveys).set(updateData).where(eq(surveys.id, surveyId));
 
   return NextResponse.json({ filename }, { status: 201 });
 }
@@ -65,21 +65,21 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: sessionId } = await params;
+  const { id: surveyId } = await params;
   const { target } = await req.json();
 
   if (target !== "intro" && target !== "outro") {
     return NextResponse.json({ error: "target must be intro or outro" }, { status: 400 });
   }
 
-  const session = await db.query.sessions.findFirst({
-    where: (s, { eq }) => eq(s.id, sessionId),
+  const survey = await db.query.surveys.findFirst({
+    where: (s, { eq }) => eq(s.id, surveyId),
   });
-  if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (!survey) {
+    return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
 
-  const filename = target === "intro" ? session.introMediaFilename : session.outroMediaFilename;
+  const filename = target === "intro" ? survey.introMediaFilename : survey.outroMediaFilename;
   if (filename) {
     const filePath = path.join(uploadsDir, filename);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -88,7 +88,7 @@ export async function DELETE(
   const updateData = target === "intro"
     ? { introMediaFilename: null }
     : { outroMediaFilename: null };
-  await db.update(sessions).set(updateData).where(eq(sessions.id, sessionId));
+  await db.update(surveys).set(updateData).where(eq(surveys.id, surveyId));
 
   return NextResponse.json({ success: true });
 }

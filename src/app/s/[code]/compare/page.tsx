@@ -12,7 +12,7 @@ interface ImageItem {
   sortOrder: number;
 }
 
-interface Session {
+interface Survey {
   id: string;
   title: string;
   votingMode: string;
@@ -54,7 +54,7 @@ export default function ComparePage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
 
-  const [session, setSession] = useState<Session | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(null);
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
@@ -68,13 +68,13 @@ export default function ComparePage() {
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch(`/api/sessions/by-code/${params.code}`);
+        const res = await fetch(`/api/surveys/by-code/${params.code}`);
         if (!res.ok) {
           setError("not_found");
           return;
         }
-        const data: Session = await res.json();
-        setSession(data);
+        const data: Survey = await res.json();
+        setSurvey(data);
         setPairs(generatePairs(data.images));
       } catch {
         setError("load_error");
@@ -95,7 +95,7 @@ export default function ComparePage() {
   const lang = (
     (typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-lang-${params.code}`)
-      : null) || session?.language || "en"
+      : null) || survey?.language || "en"
   ) as Locale;
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export default function ComparePage() {
   }, [lang]);
 
   const handleNext = useCallback(async () => {
-    if (!session || !currentPair || !selectedWinner) return;
+    if (!survey || !currentPair || !selectedWinner) return;
 
     setSubmitting(true);
 
@@ -125,7 +125,7 @@ export default function ComparePage() {
       }
 
       const res = await fetch(
-        `/api/sessions/${session.id}/pairwise-responses`,
+        `/api/surveys/${survey.id}/pairwise-responses`,
         { method: "POST", body: formData }
       );
 
@@ -145,7 +145,7 @@ export default function ComparePage() {
       setSubmitting(false);
     }
   }, [
-    session,
+    survey,
     currentPair,
     selectedWinner,
     audioBlob,
@@ -174,7 +174,7 @@ export default function ComparePage() {
     );
   }
 
-  if (error || !session || !currentPair) {
+  if (error || !survey || !currentPair) {
     const errorMsg = error === "not_found"
       ? t(lang, "intro.sessionNotFound")
       : error === "load_error"

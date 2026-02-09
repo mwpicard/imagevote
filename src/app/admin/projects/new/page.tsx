@@ -9,12 +9,14 @@ export default function NewProjectPage() {
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
 
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
@@ -24,6 +26,12 @@ export default function NewProjectPage() {
           description: description.trim() || null,
         }),
       });
+
+      if (res.status === 409) {
+        const data = await res.json();
+        setError(data.error);
+        return;
+      }
 
       if (res.ok) {
         const project = await res.json();
@@ -61,10 +69,13 @@ export default function NewProjectPage() {
               type="text"
               required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setError(null); }}
               placeholder="e.g. Product X Redesign"
               className={inputClass}
             />
+            {error && (
+              <p className="mt-1.5 text-sm text-red-600">{error}</p>
+            )}
           </div>
 
           <div>

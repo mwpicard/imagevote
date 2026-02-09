@@ -11,9 +11,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: sessionId } = await params;
+  const { id: surveyId } = await params;
   const recordings = await db.query.outroRecordings.findMany({
-    where: (r, { eq }) => eq(r.sessionId, sessionId),
+    where: (r, { eq }) => eq(r.surveyId, surveyId),
   });
   return NextResponse.json(recordings);
 }
@@ -22,7 +22,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: sessionId } = await params;
+  const { id: surveyId } = await params;
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -43,7 +43,7 @@ export async function POST(
 
   await db.insert(outroRecordings).values({
     id,
-    sessionId,
+    surveyId,
     participantId,
     audioFilename,
     createdAt: new Date().toISOString(),

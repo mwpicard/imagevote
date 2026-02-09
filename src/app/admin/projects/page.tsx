@@ -9,7 +9,7 @@ interface ProjectSummary {
   name: string;
   description: string | null;
   createdAt: string;
-  sessionCount: number;
+  surveyCount: number;
 }
 
 export default function ProjectsPage() {
@@ -87,7 +87,7 @@ export default function ProjectsPage() {
                   </div>
                   <div className="ml-4 flex-shrink-0 text-right">
                     <span className="text-sm font-medium text-zinc-600">
-                      {project.sessionCount} session{project.sessionCount !== 1 ? "s" : ""}
+                      {project.surveyCount} survey{project.surveyCount !== 1 ? "s" : ""}
                     </span>
                   </div>
                 </div>
@@ -99,9 +99,9 @@ export default function ProjectsPage() {
         {unassignedCount > 0 && (
           <div className="mt-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">
-              Unassigned Sessions
+              Unassigned Surveys
             </h2>
-            <UnassignedSessions projects={projects} />
+            <UnassignedSurveys projects={projects} />
           </div>
         )}
       </div>
@@ -109,8 +109,8 @@ export default function ProjectsPage() {
   );
 }
 
-function UnassignedSessions({ projects }: { projects: ProjectSummary[] }) {
-  interface SessionSummary {
+function UnassignedSurveys({ projects }: { projects: ProjectSummary[] }) {
+  interface SurveySummary {
     id: string;
     title: string;
     code: string;
@@ -118,50 +118,50 @@ function UnassignedSessions({ projects }: { projects: ProjectSummary[] }) {
     images: { id: string }[];
   }
 
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [surveys, setSurveys] = useState<SurveySummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/sessions?projectId=none")
+    fetch("/api/surveys?projectId=none")
       .then((r) => r.json())
-      .then(setSessions)
+      .then(setSurveys)
       .finally(() => setLoading(false));
   }, []);
 
-  async function assignToProject(sessionId: string, projectId: string) {
-    await fetch(`/api/sessions/${sessionId}`, {
+  async function assignToProject(surveyId: string, projectId: string) {
+    await fetch(`/api/surveys/${surveyId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId }),
     });
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setSurveys((prev) => prev.filter((s) => s.id !== surveyId));
   }
 
   if (loading) return <p className="text-sm text-zinc-400">Loading...</p>;
 
   return (
     <div className="space-y-3">
-      {sessions.map((session) => (
+      {surveys.map((survey) => (
         <div
-          key={session.id}
+          key={survey.id}
           className="flex items-center gap-4 rounded-xl border border-dashed border-zinc-300 bg-white p-4"
         >
           <div className="min-w-0 flex-1">
             <Link
-              href={`/admin/sessions/${session.id}`}
+              href={`/admin/surveys/${survey.id}`}
               className="truncate text-sm font-medium text-zinc-900 hover:text-blue-600"
             >
-              {session.title}
+              {survey.title}
             </Link>
             <p className="text-xs text-zinc-400">
-              {session.images.length} image{session.images.length !== 1 ? "s" : ""} &middot; Code: {session.code}
+              {survey.images.length} image{survey.images.length !== 1 ? "s" : ""} &middot; Code: {survey.code}
             </p>
           </div>
           {projects.length > 0 && (
             <select
               defaultValue=""
               onChange={(e) => {
-                if (e.target.value) assignToProject(session.id, e.target.value);
+                if (e.target.value) assignToProject(survey.id, e.target.value);
               }}
               className="h-9 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none"
             >

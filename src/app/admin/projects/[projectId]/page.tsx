@@ -9,7 +9,7 @@ interface ImageItem {
   filename: string;
 }
 
-interface SessionItem {
+interface SurveyItem {
   id: string;
   title: string;
   code: string;
@@ -23,7 +23,7 @@ interface Project {
   name: string;
   description: string | null;
   createdAt: string;
-  sessions: SessionItem[];
+  surveys: SurveyItem[];
 }
 
 export default function ProjectDetailPage() {
@@ -78,7 +78,7 @@ export default function ProjectDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this project? Sessions will be kept but unassigned.")) return;
+    if (!confirm("Delete this project? Surveys will be kept but unassigned.")) return;
     const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
     if (res.ok) {
       router.push("/admin/projects");
@@ -191,47 +191,47 @@ export default function ProjectDetailPage() {
         {/* Sessions */}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-zinc-900">
-            Sessions ({project.sessions.length})
+            Surveys ({project.surveys.length})
           </h2>
           <Link
-            href={`/admin/projects/${projectId}/sessions/new`}
+            href={`/admin/projects/${projectId}/surveys/new`}
             className="flex h-10 items-center rounded-lg bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
-            New Session
+            New Survey
           </Link>
         </div>
 
-        {project.sessions.length === 0 ? (
+        {project.surveys.length === 0 ? (
           <div className="rounded-xl border border-zinc-200 bg-white py-12 text-center">
-            <p className="text-zinc-400">No sessions yet</p>
+            <p className="text-zinc-400">No surveys yet</p>
             <Link
-              href={`/admin/projects/${projectId}/sessions/new`}
+              href={`/admin/projects/${projectId}/surveys/new`}
               className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
             >
-              Create the first session
+              Create the first survey
             </Link>
           </div>
         ) : (
           <div className="space-y-3">
-            {project.sessions.map((session) => (
+            {project.surveys.map((survey) => (
               <Link
-                key={session.id}
-                href={`/admin/sessions/${session.id}`}
+                key={survey.id}
+                href={`/admin/surveys/${survey.id}`}
                 className="block rounded-xl border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-sm font-semibold text-zinc-900">
-                      {session.title}
+                      {survey.title}
                     </h3>
                     <p className="mt-0.5 text-xs text-zinc-400">
-                      {session.images.length} image{session.images.length !== 1 ? "s" : ""} &middot;{" "}
-                      Code: {session.code} &middot;{" "}
-                      {session.votingMode === "guided_tour" ? "Guided Tour" : session.votingMode}
+                      {survey.images.length} image{survey.images.length !== 1 ? "s" : ""} &middot;{" "}
+                      Code: {survey.code} &middot;{" "}
+                      {survey.votingMode === "guided_tour" ? "Guided Tour" : survey.votingMode}
                     </p>
                   </div>
                   <span className="ml-4 text-xs text-zinc-400">
-                    {new Date(session.createdAt).toLocaleDateString()}
+                    {new Date(survey.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </Link>

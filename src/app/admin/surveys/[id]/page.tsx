@@ -14,7 +14,7 @@ interface ImageItem {
   sortOrder: number;
 }
 
-interface Session {
+interface Survey {
   id: string;
   title: string;
   description: string | null;
@@ -34,10 +34,10 @@ interface Session {
   images: ImageItem[];
 }
 
-export default function EditSessionPage() {
+export default function EditSurveyPage() {
   const { id } = useParams<{ id: string }>();
 
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -67,9 +67,9 @@ export default function EditSessionPage() {
   const fetchSession = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/sessions/${id}`);
+      const res = await fetch(`/api/surveys/${id}`);
       if (res.ok) {
-        const data: Session = await res.json();
+        const data: Survey = await res.json();
         setSession(data);
         setTitle(data.title);
         setDescription(data.description || "");
@@ -96,7 +96,7 @@ export default function EditSessionPage() {
     setSaving(true);
     setSaveMessage("");
     try {
-      const res = await fetch(`/api/sessions/${id}`, {
+      const res = await fetch(`/api/surveys/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -135,7 +135,7 @@ export default function EditSessionPage() {
       const nextOrder = session?.images.length ?? 0;
       formData.append("sortOrder", String(nextOrder));
 
-      const res = await fetch(`/api/sessions/${id}/images`, {
+      const res = await fetch(`/api/surveys/${id}/images`, {
         method: "POST",
         body: formData,
       });
@@ -163,7 +163,7 @@ export default function EditSessionPage() {
     const formData = new FormData();
     formData.append("target", target);
     formData.append("file", file);
-    const res = await fetch(`/api/sessions/${id}/media`, {
+    const res = await fetch(`/api/surveys/${id}/media`, {
       method: "POST",
       body: formData,
     });
@@ -173,7 +173,7 @@ export default function EditSessionPage() {
   }
 
   async function handleMediaDelete(target: "intro" | "outro") {
-    const res = await fetch(`/api/sessions/${id}/media`, {
+    const res = await fetch(`/api/surveys/${id}/media`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target }),
@@ -199,7 +199,7 @@ export default function EditSessionPage() {
       formData.append("label", label);
       formData.append("sortOrder", String(currentOrder));
 
-      await fetch(`/api/sessions/${id}/images`, {
+      await fetch(`/api/surveys/${id}/images`, {
         method: "POST",
         body: formData,
       });
@@ -218,7 +218,7 @@ export default function EditSessionPage() {
 
   async function handleDeleteImage(imageId: string) {
     if (!confirm("Delete this image?")) return;
-    const res = await fetch(`/api/sessions/${id}/images`, {
+    const res = await fetch(`/api/surveys/${id}/images`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageId }),
@@ -240,7 +240,7 @@ export default function EditSessionPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <div className="text-center">
-          <p className="text-zinc-500">Session not found.</p>
+          <p className="text-zinc-500">Survey not found.</p>
           <Link
             href="/admin/projects"
             className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
@@ -271,11 +271,11 @@ export default function EditSessionPage() {
               &larr; {session.projectId ? "Back to project" : "Back to projects"}
             </Link>
             <h1 className="mt-1 text-2xl font-bold text-zinc-900">
-              Edit Session
+              Edit Survey
             </h1>
           </div>
           <Link
-            href={`/admin/sessions/${id}/results`}
+            href={`/admin/surveys/${id}/results`}
             className="flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
           >
             View Results
@@ -285,7 +285,7 @@ export default function EditSessionPage() {
         {/* Share Section */}
         <div className="mb-8 rounded-xl border border-blue-100 bg-blue-50 p-5">
           <h2 className="text-sm font-semibold text-blue-900">
-            Share this session
+            Share this survey
           </h2>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <input
@@ -306,7 +306,7 @@ export default function EditSessionPage() {
             </button>
           </div>
           <p className="mt-2 text-sm text-blue-700">
-            Session code: <span className="font-mono font-bold">{session.code}</span>
+            Survey code: <span className="font-mono font-bold">{session.code}</span>
           </p>
         </div>
 
@@ -580,7 +580,7 @@ export default function EditSessionPage() {
         <div className="mt-12">
           <h2 className="text-xl font-bold text-zinc-900">Images</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            {session.images.length} image{session.images.length !== 1 ? "s" : ""} in this session
+            {session.images.length} image{session.images.length !== 1 ? "s" : ""} in this survey
           </p>
 
           {/* Bulk Upload Area */}
@@ -747,7 +747,7 @@ export default function EditSessionPage() {
           {/* Share Section (bottom) */}
           <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-5">
             <h2 className="text-sm font-semibold text-blue-900">
-              Share this session
+              Share this survey
             </h2>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <input
@@ -768,7 +768,7 @@ export default function EditSessionPage() {
               </button>
             </div>
             <p className="mt-2 text-sm text-blue-700">
-              Session code: <span className="font-mono font-bold">{session.code}</span>
+              Survey code: <span className="font-mono font-bold">{session.code}</span>
             </p>
           </div>
         </div>

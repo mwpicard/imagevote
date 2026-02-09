@@ -9,10 +9,10 @@ export const projects = sqliteTable("projects", {
 });
 
 export const projectsRelations = relations(projects, ({ many }) => ({
-  sessions: many(sessions),
+  surveys: many(surveys),
 }));
 
-export const sessions = sqliteTable("sessions", {
+export const surveys = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
@@ -33,7 +33,7 @@ export const sessions = sqliteTable("sessions", {
 
 export const images = sqliteTable("images", {
   id: text("id").primaryKey(),
-  sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+  surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   videoFilename: text("video_filename"),
   audioFilename: text("audio_filename"),
@@ -44,7 +44,7 @@ export const images = sqliteTable("images", {
 export const responses = sqliteTable("responses", {
   id: text("id").primaryKey(),
   imageId: text("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+  surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   participantId: text("participant_id").notNull(),
   vote: integer("vote"),
   audioFilename: text("audio_filename"),
@@ -55,34 +55,35 @@ export const responses = sqliteTable("responses", {
 // Outro voice recording (overall impressions, not tied to a specific image)
 export const outroRecordings = sqliteTable("outro_recordings", {
   id: text("id").primaryKey(),
-  sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+  surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   participantId: text("participant_id").notNull(),
   audioFilename: text("audio_filename").notNull(),
   transcription: text("transcription"),
   createdAt: text("created_at").notNull(),
 });
 
-export const sessionsRelations = relations(sessions, ({ one, many }) => ({
-  project: one(projects, { fields: [sessions.projectId], references: [projects.id] }),
+export const surveysRelations = relations(surveys, ({ one, many }) => ({
+  project: one(projects, { fields: [surveys.projectId], references: [projects.id] }),
   images: many(images),
   responses: many(responses),
   outroRecordings: many(outroRecordings),
   pairwiseResponses: many(pairwiseResponses),
+  participants: many(participants),
 }));
 
 export const imagesRelations = relations(images, ({ one, many }) => ({
-  session: one(sessions, { fields: [images.sessionId], references: [sessions.id] }),
+  survey: one(surveys, { fields: [images.surveyId], references: [surveys.id] }),
   responses: many(responses),
 }));
 
 export const responsesRelations = relations(responses, ({ one }) => ({
   image: one(images, { fields: [responses.imageId], references: [images.id] }),
-  session: one(sessions, { fields: [responses.sessionId], references: [sessions.id] }),
+  survey: one(surveys, { fields: [responses.surveyId], references: [surveys.id] }),
 }));
 
 export const pairwiseResponses = sqliteTable("pairwise_responses", {
   id: text("id").primaryKey(),
-  sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+  surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   participantId: text("participant_id").notNull(),
   imageAId: text("image_a_id").notNull().references(() => images.id, { onDelete: "cascade" }),
   imageBId: text("image_b_id").notNull().references(() => images.id, { onDelete: "cascade" }),
@@ -93,12 +94,37 @@ export const pairwiseResponses = sqliteTable("pairwise_responses", {
 });
 
 export const outroRecordingsRelations = relations(outroRecordings, ({ one }) => ({
-  session: one(sessions, { fields: [outroRecordings.sessionId], references: [sessions.id] }),
+  survey: one(surveys, { fields: [outroRecordings.surveyId], references: [surveys.id] }),
 }));
 
 export const pairwiseResponsesRelations = relations(pairwiseResponses, ({ one }) => ({
-  session: one(sessions, { fields: [pairwiseResponses.sessionId], references: [sessions.id] }),
+  survey: one(surveys, { fields: [pairwiseResponses.surveyId], references: [surveys.id] }),
   imageA: one(images, { fields: [pairwiseResponses.imageAId], references: [images.id], relationName: "imageA" }),
   imageB: one(images, { fields: [pairwiseResponses.imageBId], references: [images.id], relationName: "imageB" }),
   winner: one(images, { fields: [pairwiseResponses.winnerId], references: [images.id], relationName: "winner" }),
+}));
+
+export const participants = sqliteTable("participants", {
+  id: text("id").primaryKey(),
+  surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const participantsRelations = relations(participants, ({ one }) => ({
+  survey: one(surveys, { fields: [participants.surveyId], references: [surveys.id] }),
+}));
+
+export const orderInterests = sqliteTable("order_interests", {
+  id: text("id").primaryKey(),
+  surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
+  participantId: text("participant_id").notNull(),
+  email: text("email").notNull(),
+  imageIds: text("image_ids").notNull(), // JSON array of image IDs
+  createdAt: text("created_at").notNull(),
+});
+
+export const orderInterestsRelations = relations(orderInterests, ({ one }) => ({
+  survey: one(surveys, { fields: [orderInterests.surveyId], references: [surveys.id] }),
 }));

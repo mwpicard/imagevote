@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projects, sessions } from "@/lib/schema";
+import { projects, surveys } from "@/lib/schema";
 import { v4 as uuid } from "uuid";
 import { desc, eq, isNull, sql } from "drizzle-orm";
 
 export async function GET() {
-  // Get all projects with session counts
+  // Get all projects with survey counts
   const allProjects = await db
     .select({
       id: projects.id,
       name: projects.name,
       description: projects.description,
       createdAt: projects.createdAt,
-      sessionCount: sql<number>`count(${sessions.id})`.as("session_count"),
+      surveyCount: sql<number>`count(${surveys.id})`.as("survey_count"),
     })
     .from(projects)
-    .leftJoin(sessions, eq(sessions.projectId, projects.id))
+    .leftJoin(surveys, eq(surveys.projectId, projects.id))
     .groupBy(projects.id)
     .orderBy(desc(projects.createdAt));
 
-  // Count unassigned sessions
+  // Count unassigned surveys
   const [unassigned] = await db
     .select({ count: sql<number>`count(*)` })
-    .from(sessions)
-    .where(isNull(sessions.projectId));
+    .from(surveys)
+    .where(isNull(surveys.projectId));
 
   return NextResponse.json({
     projects: allProjects,
@@ -33,11 +33,24 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  const name = body.name?.trim() || "Untitled Project";
+
+  // Check for duplicate project name
+  const existing = await db.query.projects.findFirst({
+    where: (p, { eq }) => eq(p.name, name),
+  });
+  if (existing) {
+    return NextResponse.json(
+      { error: `A project named "${name}" already exists.` },
+      { status: 409 }
+    );
+  }
+
   const id = uuid();
 
   await db.insert(projects).values({
     id,
-    name: body.name || "Untitled Project",
+    name,
     description: body.description || null,
     createdAt: new Date().toISOString(),
   });

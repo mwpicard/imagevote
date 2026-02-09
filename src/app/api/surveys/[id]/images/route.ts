@@ -18,7 +18,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: sessionId } = await params;
+  const { id: surveyId } = await params;
   ensureUploadsDir();
 
   const formData = await req.formData();
@@ -56,7 +56,7 @@ export async function POST(
 
   await db.insert(images).values({
     id: imageId,
-    sessionId,
+    surveyId,
     filename: imageFilename,
     videoFilename,
     audioFilename,
@@ -110,7 +110,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: sessionId } = await params;
+  const { id: surveyId } = await params;
   const body = await req.json();
 
   // Reorder images
@@ -124,7 +124,7 @@ export async function PUT(
   }
 
   const updated = await db.query.images.findMany({
-    where: (img, { eq }) => eq(img.sessionId, sessionId),
+    where: (img, { eq }) => eq(img.surveyId, surveyId),
     orderBy: (img, { asc }) => [asc(img.sortOrder)],
   });
 

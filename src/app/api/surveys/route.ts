@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sessions } from "@/lib/schema";
+import { surveys } from "@/lib/schema";
 import { v4 as uuid } from "uuid";
 import { desc } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("projectId");
 
-  const allSessions = await db.query.sessions.findMany({
+  const allSurveys = await db.query.surveys.findMany({
     where: projectId === "none"
       ? (s, { isNull }) => isNull(s.projectId)
       : projectId
         ? (s, { eq }) => eq(s.projectId, projectId)
         : undefined,
-    orderBy: [desc(sessions.createdAt)],
+    orderBy: [desc(surveys.createdAt)],
     with: { images: true },
   });
-  return NextResponse.json(allSessions);
+  return NextResponse.json(allSurveys);
 }
 
 export async function POST(req: NextRequest) {
@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
   const id = uuid();
   const code = uuid().slice(0, 8);
 
-  await db.insert(sessions).values({
+  await db.insert(surveys).values({
     id,
-    title: body.title || "Untitled Session",
+    title: body.title || "Untitled Survey",
     description: body.description || null,
     introHeading: body.introHeading || "Welcome",
     introBody: body.introBody || "You will be shown a series of images. For each one, share your impressions and vote.",
@@ -41,9 +41,9 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
   });
 
-  const session = await db.query.sessions.findFirst({
+  const survey = await db.query.surveys.findFirst({
     where: (s, { eq }) => eq(s.id, id),
   });
 
-  return NextResponse.json(session, { status: 201 });
+  return NextResponse.json(survey, { status: 201 });
 }

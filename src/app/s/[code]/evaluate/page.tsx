@@ -14,7 +14,7 @@ interface ImageItem {
   sortOrder: number;
 }
 
-interface Session {
+interface Survey {
   id: string;
   title: string;
   introHeading: string;
@@ -42,7 +42,7 @@ export default function EvaluatePage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
 
-  const [session, setSession] = useState<Session | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(null);
   const [orderedImages, setOrderedImages] = useState<ImageItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [vote, setVote] = useState<number | null>(null);
@@ -57,17 +57,17 @@ export default function EvaluatePage() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Fetch session
+  // Fetch survey
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch(`/api/sessions/by-code/${params.code}`);
+        const res = await fetch(`/api/surveys/by-code/${params.code}`);
         if (!res.ok) {
           setError("not_found");
           return;
         }
-        const data: Session = await res.json();
-        setSession(data);
+        const data: Survey = await res.json();
+        setSurvey(data);
 
         const imgs = data.randomizeOrder
           ? shuffleArray(data.images)
@@ -92,7 +92,7 @@ export default function EvaluatePage() {
   const lang = (
     (typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-lang-${params.code}`)
-      : null) || session?.language || "en"
+      : null) || survey?.language || "en"
   ) as Locale;
 
   useEffect(() => {
@@ -101,17 +101,17 @@ export default function EvaluatePage() {
 
   // Pre-request mic permission when autoRecord is enabled
   useEffect(() => {
-    if (session?.autoRecord) {
+    if (survey?.autoRecord) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => stream.getTracks().forEach((t) => t.stop()))
         .catch(() => {});
     }
-  }, [session?.autoRecord]);
+  }, [survey?.autoRecord]);
 
   // Auto-play image audio + auto-record sequence
   useEffect(() => {
-    if (!session || !currentImage) return;
+    if (!survey || !currentImage) return;
 
     let cancelled = false;
 
@@ -136,7 +136,7 @@ export default function EvaluatePage() {
       }
 
       // Step 2: Auto-start recording if autoRecord is on
-      if (session!.autoRecord && !cancelled) {
+      if (survey!.autoRecord && !cancelled) {
         await startRecording();
       }
     }
@@ -153,10 +153,10 @@ export default function EvaluatePage() {
       setPlayingAudio(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, session?.autoRecord]);
+  }, [currentIndex, survey?.autoRecord]);
 
   const handleNext = useCallback(async () => {
-    if (!session || !currentImage || vote === null) return;
+    if (!survey || !currentImage || vote === null) return;
 
     setSubmitting(true);
 
@@ -177,7 +177,7 @@ export default function EvaluatePage() {
         formData.append("audio", finalAudio, `recording${ext}`);
       }
 
-      const res = await fetch(`/api/sessions/${session.id}/responses`, {
+      const res = await fetch(`/api/surveys/${survey.id}/responses`, {
         method: "POST",
         body: formData,
       });
@@ -188,7 +188,7 @@ export default function EvaluatePage() {
 
       // Move to next image or done
       if (currentIndex + 1 >= orderedImages.length) {
-        if (session.votingMode === "guided_tour") {
+        if (survey.votingMode === "guided_tour") {
           router.push(`/s/${params.code}/compare`);
         } else {
           router.push(`/s/${params.code}/done`);
@@ -203,7 +203,7 @@ export default function EvaluatePage() {
       setSubmitting(false);
     }
   }, [
-    session,
+    survey,
     currentImage,
     vote,
     audioBlob,
@@ -232,7 +232,7 @@ export default function EvaluatePage() {
     );
   }
 
-  if (error || !session || !currentImage) {
+  if (error || !survey || !currentImage) {
     const errorMsg = error === "not_found"
       ? t(lang, "intro.sessionNotFound")
       : error === "load_error"
@@ -258,7 +258,7 @@ export default function EvaluatePage() {
     <div className="flex min-h-dvh flex-col bg-white dark:bg-zinc-950">
       {/* Progress bar */}
       <div className="flex flex-col items-center px-4 pt-4 pb-2">
-        {session.votingMode === "guided_tour" && (
+        {survey.votingMode === "guided_tour" && (
           <span className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
             {t(lang, "eval.phaseLabel")}
           </span>
@@ -301,7 +301,7 @@ export default function EvaluatePage() {
 
         {/* Voting controls */}
         <div className="flex items-center justify-center gap-3">
-          {(session.votingMode === "binary" || session.votingMode === "guided_tour") && (
+          {(survey.votingMode === "binary" || survey.votingMode === "guided_tour") && (
             <>
               <button
                 onClick={() => setVote(0)}
@@ -332,7 +332,7 @@ export default function EvaluatePage() {
             </>
           )}
 
-          {session.votingMode === "scale" && (
+          {survey.votingMode === "scale" && (
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center gap-3">
                 {[1, 2, 3, 4, 5].map((n) => (
@@ -357,7 +357,7 @@ export default function EvaluatePage() {
             </div>
           )}
 
-          {session.votingMode === "pairwise" && (
+          {survey.votingMode === "pairwise" && (
             <button
               onClick={() => setVote(1)}
               className={`h-14 rounded-2xl border-2 px-8 text-base font-semibold transition-all ${
@@ -373,7 +373,7 @@ export default function EvaluatePage() {
 
         {/* Audio recording */}
         <div className="flex flex-col items-center gap-2">
-          {session.autoRecord ? (
+          {survey.autoRecord ? (
             <>
               {playingAudio && (
                 <span className="text-xs font-medium text-blue-500">
@@ -441,7 +441,7 @@ export default function EvaluatePage() {
           {submitting
             ? t(lang, "eval.submitting")
             : currentIndex + 1 >= orderedImages.length
-              ? session.votingMode === "guided_tour"
+              ? survey.votingMode === "guided_tour"
                 ? t(lang, "eval.nextPhase")
                 : t(lang, "eval.finish")
               : t(lang, "eval.next")}

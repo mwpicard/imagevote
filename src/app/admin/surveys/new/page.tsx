@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LOCALES, type Locale } from "@/lib/i18n";
 
-export default function NewSessionPage() {
+export default function NewSurveyPage() {
   return (
     <Suspense
       fallback={
@@ -14,12 +14,12 @@ export default function NewSessionPage() {
         </div>
       }
     >
-      <NewSessionForm />
+      <NewSurveyForm />
     </Suspense>
   );
 }
 
-function NewSessionForm() {
+function NewSurveyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId");
@@ -46,7 +46,7 @@ function NewSessionForm() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/sessions", {
+      const res = await fetch("/api/surveys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -66,7 +66,7 @@ function NewSessionForm() {
 
       if (res.ok) {
         const session = await res.json();
-        router.push(`/admin/sessions/${session.id}`);
+        router.push(`/admin/surveys/${session.id}`);
       }
     } finally {
       setSubmitting(false);
@@ -87,7 +87,7 @@ function NewSessionForm() {
           &larr; {projectId ? "Back to project" : "Back to projects"}
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-zinc-900">
-          Create New Session
+          Create New Survey
         </h1>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
@@ -150,7 +150,7 @@ function NewSessionForm() {
                 />
               </div>
               <p className="text-sm text-zinc-400">
-                Background image/video can be added after creating the session.
+                Background image/video can be added after creating the survey.
               </p>
             </div>
           </div>
@@ -185,7 +185,7 @@ function NewSessionForm() {
                 />
               </div>
               <p className="text-sm text-zinc-400">
-                Background image/video can be added after creating the session.
+                Background image/video can be added after creating the survey.
               </p>
             </div>
           </div>
@@ -270,7 +270,7 @@ function NewSessionForm() {
             disabled={submitting || !title.trim()}
             className="flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? "Creating..." : "Create Session"}
+            {submitting ? "Creating..." : "Create Survey"}
           </button>
         </form>
       </div>

@@ -23,7 +23,7 @@ interface ImageData {
   sortOrder: number;
 }
 
-interface Session {
+interface Survey {
   id: string;
   title: string;
   code: string;
@@ -44,7 +44,7 @@ interface ResponseData {
 
 interface PairwiseResponseData {
   id: string;
-  sessionId: string;
+  surveyId: string;
   participantId: string;
   imageAId: string;
   imageBId: string;
@@ -60,39 +60,60 @@ interface OutroRecording {
   createdAt: string;
 }
 
+interface Participant {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  createdAt: string;
+}
+
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
 export default function ResultsPage() {
   const { id } = useParams<{ id: string }>();
-  const [session, setSession] = useState<Session | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(null);
   const [responses, setResponses] = useState<ResponseData[]>([]);
   const [pairwiseResponses, setPairwiseResponses] = useState<PairwiseResponseData[]>([]);
   const [outroRecordings, setOutroRecordings] = useState<OutroRecording[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/sessions/${id}`).then((r) => r.json()).then(setSession);
-    fetch(`/api/sessions/${id}/responses`).then((r) => r.json()).then(setResponses);
-    fetch(`/api/sessions/${id}/pairwise-responses`)
+    fetch(`/api/surveys/${id}`).then((r) => r.json()).then(setSurvey);
+    fetch(`/api/surveys/${id}/responses`).then((r) => r.json()).then(setResponses);
+    fetch(`/api/surveys/${id}/pairwise-responses`)
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setPairwiseResponses(Array.isArray(data) ? data : []));
-    fetch(`/api/sessions/${id}/outro-recording`)
+    fetch(`/api/surveys/${id}/outro-recording`)
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setOutroRecordings(Array.isArray(data) ? data : []));
+    fetch(`/api/surveys/${id}/participants`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setParticipants(Array.isArray(data) ? data : []));
   }, [id]);
 
-  if (!session) {
+  if (!survey) {
     return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;
   }
 
-  const isGuidedTour = session.votingMode === "guided_tour";
+  const isGuidedTour = survey.votingMode === "guided_tour";
   const participantIds = [...new Set(responses.map((r) => r.participantId))];
+  const participantMap = new Map(participants.map((p) => [p.id, p]));
+
+  function participantName(pid: string) {
+    const p = participantMap.get(pid);
+    if (!p) return pid.slice(0, 8);
+    return p.lastName
+      ? `${p.firstName} ${p.lastName.charAt(0)}.`
+      : p.firstName;
+  }
+
   const sessionUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/s/${session.code}`
-    : `/s/${session.code}`;
+    ? `${window.location.origin}/s/${survey.code}`
+    : `/s/${survey.code}`;
 
   // Build per-image stats
-  const imageStats = session.images.map((img, idx) => {
+  const imageStats = survey.images.map((img, idx) => {
     const imgResponses = responses.filter((r) => r.imageId === img.id);
     const votes = imgResponses.filter((r) => r.vote !== null).map((r) => r.vote!);
     const audioCount = imgResponses.filter((r) => r.audioFilename).length;
@@ -100,12 +121,12 @@ export default function ResultsPage() {
     let voteLabel = "";
     let voteValue = 0;
 
-    if (session.votingMode === "binary" || isGuidedTour) {
+    if (survey.votingMode === "binary" || isGuidedTour) {
       const up = votes.filter((v) => v === 1).length;
       const down = votes.filter((v) => v === 0).length;
       voteLabel = `\u{1F44D} ${up} / \u{1F44E} ${down}`;
       voteValue = up;
-    } else if (session.votingMode === "scale") {
+    } else if (survey.votingMode === "scale") {
       const avg = votes.length > 0 ? votes.reduce((a, b) => a + b, 0) / votes.length : 0;
       voteLabel = `Avg: ${avg.toFixed(1)} / 5`;
       voteValue = avg;
@@ -133,11 +154,11 @@ export default function ResultsPage() {
   }));
 
   // Pairwise ranking data (win percentage per image)
-  const imageNameMap = new Map(session.images.map((img, idx) => [img.id, img.label || `Image ${idx + 1}`]));
+  const imageNameMap = new Map(survey.images.map((img, idx) => [img.id, img.label || `Image ${idx + 1}`]));
 
-  const imageFilenameMap = new Map(session.images.map((img) => [img.id, img.filename]));
+  const imageFilenameMap = new Map(survey.images.map((img) => [img.id, img.filename]));
 
-  const rankingData = session.images.map((img, idx) => {
+  const rankingData = survey.images.map((img, idx) => {
     const wins = pairwiseResponses.filter((r) => r.winnerId === img.id).length;
     const total = pairwiseResponses.filter(
       (r) => r.imageAId === img.id || r.imageBId === img.id
@@ -174,14 +195,19 @@ export default function ResultsPage() {
   }
 
   function exportData(format: "csv" | "json") {
-    const data = responses.map((r) => ({
-      imageId: r.imageId,
-      imageLabel: session!.images.find((i) => i.id === r.imageId)?.label || "",
-      participantId: r.participantId,
-      vote: r.vote,
-      audioFilename: r.audioFilename || "",
-      createdAt: r.createdAt,
-    }));
+    const data = responses.map((r) => {
+      const p = participantMap.get(r.participantId);
+      return {
+        imageId: r.imageId,
+        imageLabel: survey!.images.find((i) => i.id === r.imageId)?.label || "",
+        participantId: r.participantId,
+        participantFirstName: p?.firstName || "",
+        participantLastName: p?.lastName || "",
+        vote: r.vote,
+        audioFilename: r.audioFilename || "",
+        createdAt: r.createdAt,
+      };
+    });
 
     let content: string;
     let mime: string;
@@ -203,14 +229,18 @@ export default function ResultsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${session!.title}-results.${ext}`;
+    a.download = `${survey!.title}-results.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   function exportPairwiseData(format: "csv" | "json") {
-    const data = pairwiseResponses.map((r) => ({
+    const data = pairwiseResponses.map((r) => {
+      const p = participantMap.get(r.participantId);
+      return {
       participantId: r.participantId,
+      participantFirstName: p?.firstName || "",
+      participantLastName: p?.lastName || "",
       imageAId: r.imageAId,
       imageALabel: imageNameMap.get(r.imageAId) || "",
       imageBId: r.imageBId,
@@ -219,7 +249,8 @@ export default function ResultsPage() {
       winnerLabel: imageNameMap.get(r.winnerId) || "",
       audioFilename: r.audioFilename || "",
       createdAt: r.createdAt,
-    }));
+    };
+    });
 
     let content: string;
     let mime: string;
@@ -241,7 +272,7 @@ export default function ResultsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${session!.title}-pairwise.${ext}`;
+    a.download = `${survey!.title}-pairwise.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -250,12 +281,16 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 max-w-6xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <Link href={`/admin/sessions/${id}`} className="text-blue-600 text-sm hover:underline">
-            &larr; Back to session
+          <Link href={`/admin/surveys/${id}`} className="text-blue-600 text-sm hover:underline">
+            &larr; Back to survey
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{session.title} — Results</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{survey.title} — Results</h1>
           <p className="text-gray-500 mt-1">
-            {participantIds.length} participant{participantIds.length !== 1 ? "s" : ""} &middot;{" "}
+            {participantIds.length} participant{participantIds.length !== 1 ? "s" : ""}
+            {participants.length > 0 && (
+              <span> ({participants.map((p) => p.firstName).join(", ")})</span>
+            )}
+            {" "}&middot;{" "}
             {responses.length} response{responses.length !== 1 ? "s" : ""}
             {isGuidedTour && (
               <> &middot; {pairwiseResponses.length} pairwise comparison{pairwiseResponses.length !== 1 ? "s" : ""}</>
@@ -282,9 +317,9 @@ export default function ResultsPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
         <QRCodeSVG value={sessionUrl} size={120} />
         <div className="text-center sm:text-left">
-          <p className="text-sm text-gray-500 mb-1">Share this session</p>
+          <p className="text-sm text-gray-500 mb-1">Share this survey</p>
           <p className="font-mono text-sm sm:text-lg text-gray-900 bg-gray-100 px-3 py-1.5 rounded break-all">{sessionUrl}</p>
-          <p className="text-sm text-gray-500 mt-2">Code: <span className="font-mono font-bold">{session.code}</span></p>
+          <p className="text-sm text-gray-500 mt-2">Code: <span className="font-mono font-bold">{survey.code}</span></p>
         </div>
       </div>
 
@@ -297,9 +332,9 @@ export default function ResultsPage() {
       {chartData.length > 0 && responses.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            {session.votingMode === "binary" || isGuidedTour
+            {survey.votingMode === "binary" || isGuidedTour
               ? "Positive Votes"
-              : session.votingMode === "scale"
+              : survey.votingMode === "scale"
                 ? "Average Rating"
                 : "Preference Count"}
           </h2>
@@ -354,7 +389,7 @@ export default function ResultsPage() {
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                           }`}
                         >
-                          {playingAudio === r.audioFilename ? "Playing..." : `\u25B6 Recording`}
+                          {playingAudio === r.audioFilename ? "Playing..." : `\u25B6 ${participantName(r.participantId)}`}
                         </button>
                       ))}
                   </div>
@@ -374,7 +409,7 @@ export default function ResultsPage() {
           {pairwiseWinner && (
             <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-6 mb-8 flex items-center gap-5">
               <img
-                src={`/api/uploads?file=${session.images.find((i) => i.id === pairwiseWinner.id)?.filename}`}
+                src={`/api/uploads?file=${survey.images.find((i) => i.id === pairwiseWinner.id)?.filename}`}
                 alt={pairwiseWinner.name}
                 className="w-20 h-20 object-cover rounded-lg border-2 border-amber-300 flex-shrink-0"
               />
@@ -462,7 +497,7 @@ export default function ResultsPage() {
               <thead>
                 <tr>
                   <th className="p-2"></th>
-                  {session.images.map((img, idx) => (
+                  {survey.images.map((img, idx) => (
                     <th key={img.id} className="p-2 text-center">
                       <div className="flex flex-col items-center gap-1">
                         <img
@@ -477,7 +512,7 @@ export default function ResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                {session.images.map((rowImg, rowIdx) => (
+                {survey.images.map((rowImg, rowIdx) => (
                   <tr key={rowImg.id} className="border-t border-gray-100">
                     <td className="p-2">
                       <img
@@ -486,7 +521,7 @@ export default function ResultsPage() {
                         className="h-10 w-10 rounded-md object-cover"
                       />
                     </td>
-                    {session.images.map((colImg) => {
+                    {survey.images.map((colImg) => {
                       if (rowImg.id === colImg.id) {
                         return (
                           <td key={colImg.id} className="p-2 text-center bg-gray-50 text-gray-300">
@@ -586,7 +621,7 @@ export default function ResultsPage() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                {playingAudio === rec.audioFilename ? "Playing..." : `\u25B6 Participant`}
+                {playingAudio === rec.audioFilename ? "Playing..." : `\u25B6 ${participantName(rec.participantId)}`}
               </button>
             ))}
           </div>
@@ -597,7 +632,7 @@ export default function ResultsPage() {
       {responses.length === 0 && pairwiseResponses.length === 0 && (
         <div className="text-center py-16 text-gray-400">
           <p className="text-lg">No responses yet</p>
-          <p className="text-sm mt-2">Share the session link to start collecting feedback</p>
+          <p className="text-sm mt-2">Share the survey link to start collecting feedback</p>
         </div>
       )}
     </div>

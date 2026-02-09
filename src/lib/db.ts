@@ -83,6 +83,23 @@ sqlite.exec(`
     transcription TEXT,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS participants (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS order_interests (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    participant_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    image_ids TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
 `);
 
 // Migrations for existing databases

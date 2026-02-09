@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sessions, images as imagesTable } from "@/lib/schema";
+import { surveys, images as imagesTable } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
@@ -10,16 +10,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await db.query.sessions.findFirst({
+  const survey = await db.query.surveys.findFirst({
     where: (s, { eq }) => eq(s.id, id),
     with: { images: { orderBy: (img, { asc }) => [asc(img.sortOrder)] } },
   });
 
-  if (!session) {
+  if (!survey) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(session);
+  return NextResponse.json(survey);
 }
 
 export async function PUT(
@@ -46,16 +46,16 @@ export async function PUT(
   }
 
   await db
-    .update(sessions)
+    .update(surveys)
     .set(updates)
-    .where(eq(sessions.id, id));
+    .where(eq(surveys.id, id));
 
-  const session = await db.query.sessions.findFirst({
+  const survey = await db.query.surveys.findFirst({
     where: (s, { eq }) => eq(s.id, id),
     with: { images: { orderBy: (img, { asc }) => [asc(img.sortOrder)] } },
   });
 
-  return NextResponse.json(session);
+  return NextResponse.json(survey);
 }
 
 export async function DELETE(
@@ -65,12 +65,12 @@ export async function DELETE(
   const { id } = await params;
 
   // Delete associated files
-  const sessionImages = await db.query.images.findMany({
-    where: (img, { eq }) => eq(img.sessionId, id),
+  const surveyImages = await db.query.images.findMany({
+    where: (img, { eq }) => eq(img.surveyId, id),
   });
 
   const uploadsDir = path.join(process.cwd(), "data", "uploads");
-  for (const img of sessionImages) {
+  for (const img of surveyImages) {
     const imgPath = path.join(uploadsDir, img.filename);
     if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     if (img.videoFilename) {
@@ -83,6 +83,6 @@ export async function DELETE(
     }
   }
 
-  await db.delete(sessions).where(eq(sessions.id, id));
+  await db.delete(surveys).where(eq(surveys.id, id));
   return NextResponse.json({ success: true });
 }
