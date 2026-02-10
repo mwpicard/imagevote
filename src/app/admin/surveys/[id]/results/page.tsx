@@ -215,13 +215,6 @@ export default function ResultsPage() {
     return survey.images.findIndex((i) => i.id === a.id) - survey.images.findIndex((i) => i.id === b.id);
   });
 
-  const chartData = phase1Ranking.map((s) => ({
-    name: s.name,
-    value: s.voteValue,
-    filename: s.filename,
-    id: s.id,
-  }));
-
   // Pairwise ranking data — score-based (slider gives 0-100 pts per comparison)
   const imageNameMap = new Map(survey.images.map((img, idx) => [img.id, img.label || `Image ${idx + 1}`]));
 
@@ -436,71 +429,20 @@ export default function ResultsPage() {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Phase 1 — Individual Ratings</h2>
       )}
 
-      {/* Chart + Ranking */}
-      {chartData.length > 0 && responses.length > 0 && (
+      {/* Ranking */}
+      {phase1Ranking.length > 1 && responses.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            {survey.votingMode === "binary" || isGuidedTour
-              ? "Positive Votes"
-              : survey.votingMode === "scale"
-                ? "Average Rating"
-                : "Preference Count"}
-          </h2>
-          <div className="h-[200px] sm:h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="name"
-                tick={(props) => {
-                  const { x, y, payload } = props as { x: number; y: number; payload: { value: string } };
-                  const item = chartData.find((d) => d.name === payload.value);
-                  if (!item) return <text />;
-                  return (
-                    <g transform={`translate(${x},${y + 8})`}>
-                      <clipPath id={`clip-p1-${item.id}`}>
-                        <circle cx={0} cy={16} r={16} />
-                      </clipPath>
-                      <image
-                        href={`/api/uploads?file=${encodeURIComponent(item.filename)}`}
-                        x={-16} y={0} width={32} height={32}
-                        clipPath={`url(#clip-p1-${item.id})`}
-                        preserveAspectRatio="xMidYMid slice"
-                      />
-                    </g>
-                  );
-                }}
-                interval={0}
-                height={50}
-              />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {chartData.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          </div>
-          {/* Compact ranking */}
-          {phase1Ranking.length > 1 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Ranking</h3>
-              <div className="space-y-1">
-                {phase1Ranking.map((stat, rank) => (
-                  <div key={stat.id} className="flex items-center gap-2.5 text-sm">
-                    <span className="w-5 text-right font-bold text-gray-400 text-xs">#{rank + 1}</span>
-                    <img src={`/api/uploads?file=${stat.filename}`} alt={stat.name} className="h-7 w-7 rounded object-cover flex-shrink-0" />
-                    <span className="flex-1 truncate font-medium text-gray-900">{stat.name}</span>
-                    <span className="text-gray-500 font-mono text-xs tabular-nums">
-                      {survey.votingMode === "scale" ? stat.voteValue.toFixed(1) : stat.voteValue}
-                    </span>
-                  </div>
-                ))}
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Ranking</h2>
+          <div className="space-y-1.5">
+            {phase1Ranking.map((stat, rank) => (
+              <div key={stat.id} className="flex items-center gap-2.5 text-sm">
+                <span className="w-5 text-right font-bold text-gray-400 text-xs">#{rank + 1}</span>
+                <img src={`/api/uploads?file=${stat.filename}`} alt={stat.name} className="h-7 w-7 rounded object-cover flex-shrink-0" />
+                <span className="truncate font-medium text-gray-900">{stat.name}</span>
+                <span className="text-gray-400 text-xs">{stat.voteLabel}</span>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
