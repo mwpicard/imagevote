@@ -570,22 +570,6 @@ export default function ResultsPage() {
               </BarChart>
             </ResponsiveContainer>
             </div>
-            {/* Compact ranking */}
-            {rankingData.length > 1 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Ranking</h3>
-                <div className="space-y-1">
-                  {rankingData.map((item, rank) => (
-                    <div key={item.id} className="flex items-center gap-2.5 text-sm">
-                      <span className="w-5 text-right font-bold text-gray-400 text-xs">#{rank + 1}</span>
-                      <img src={`/api/uploads?file=${item.filename}`} alt={item.name} className="h-7 w-7 rounded object-cover flex-shrink-0" />
-                      <span className="flex-1 truncate font-medium text-gray-900">{item.name}</span>
-                      <span className="text-gray-500 font-mono text-xs tabular-nums">{item.points} pts</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Head-to-head matrix */}
