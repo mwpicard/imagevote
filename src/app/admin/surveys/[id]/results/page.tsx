@@ -424,6 +424,61 @@ export default function ResultsPage() {
         </div>
       </div>
 
+      {/* Full transcript */}
+      {(() => {
+        const allTranscriptions: { participantId: string; entries: { context: string; text: string }[] }[] = [];
+        const pids = [...new Set([
+          ...responses.map((r) => r.participantId),
+          ...pairwiseResponses.map((r) => r.participantId),
+          ...outroRecordings.map((r) => r.participantId),
+        ])];
+        for (const pid of pids) {
+          const entries: { context: string; text: string }[] = [];
+          for (const r of responses) {
+            if (r.participantId === pid && r.transcription) {
+              const label = imageNameMap.get(r.imageId) || r.imageId.slice(0, 8);
+              entries.push({ context: `on ${label}`, text: r.transcription });
+            }
+          }
+          for (const r of pairwiseResponses) {
+            if (r.participantId === pid && r.transcription) {
+              const a = imageNameMap.get(r.imageAId) || "?";
+              const b = imageNameMap.get(r.imageBId) || "?";
+              entries.push({ context: `${a} vs ${b}`, text: r.transcription });
+            }
+          }
+          for (const r of outroRecordings) {
+            if (r.participantId === pid && r.transcription) {
+              entries.push({ context: "final impressions", text: r.transcription });
+            }
+          }
+          if (entries.length > 0) allTranscriptions.push({ participantId: pid, entries });
+        }
+        if (allTranscriptions.length === 0) return null;
+        return (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Transcript</h2>
+            <div className="space-y-6">
+              {allTranscriptions.map(({ participantId, entries }) => (
+                <div key={participantId}>
+                  <h3 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-1 mb-2">
+                    {participantName(participantId)}
+                  </h3>
+                  <div className="space-y-1.5">
+                    {entries.map((e, i) => (
+                      <p key={i} className="text-sm text-gray-700">
+                        <span className="text-gray-400">[{e.context}]</span>{" "}
+                        {e.text}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Phase 1 header for guided tour */}
       {isGuidedTour && responses.length > 0 && (
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Phase 1 — Individual Ratings</h2>
@@ -713,61 +768,6 @@ export default function ResultsPage() {
           </div>
         </div>
       )}
-
-      {/* Full transcript */}
-      {(() => {
-        const allTranscriptions: { participantId: string; entries: { context: string; text: string }[] }[] = [];
-        const pids = [...new Set([
-          ...responses.map((r) => r.participantId),
-          ...pairwiseResponses.map((r) => r.participantId),
-          ...outroRecordings.map((r) => r.participantId),
-        ])];
-        for (const pid of pids) {
-          const entries: { context: string; text: string }[] = [];
-          for (const r of responses) {
-            if (r.participantId === pid && r.transcription) {
-              const label = imageNameMap.get(r.imageId) || r.imageId.slice(0, 8);
-              entries.push({ context: `on ${label}`, text: r.transcription });
-            }
-          }
-          for (const r of pairwiseResponses) {
-            if (r.participantId === pid && r.transcription) {
-              const a = imageNameMap.get(r.imageAId) || "?";
-              const b = imageNameMap.get(r.imageBId) || "?";
-              entries.push({ context: `${a} vs ${b}`, text: r.transcription });
-            }
-          }
-          for (const r of outroRecordings) {
-            if (r.participantId === pid && r.transcription) {
-              entries.push({ context: "final impressions", text: r.transcription });
-            }
-          }
-          if (entries.length > 0) allTranscriptions.push({ participantId: pid, entries });
-        }
-        if (allTranscriptions.length === 0) return null;
-        return (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Transcript</h2>
-            <div className="space-y-6">
-              {allTranscriptions.map(({ participantId, entries }) => (
-                <div key={participantId}>
-                  <h3 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-1 mb-2">
-                    {participantName(participantId)}
-                  </h3>
-                  <div className="space-y-1.5">
-                    {entries.map((e, i) => (
-                      <p key={i} className="text-sm text-gray-700">
-                        <span className="text-gray-400">[{e.context}]</span>{" "}
-                        {e.text}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Empty state */}
       {responses.length === 0 && pairwiseResponses.length === 0 && (

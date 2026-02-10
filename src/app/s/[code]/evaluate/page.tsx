@@ -52,7 +52,7 @@ export default function EvaluatePage() {
   const [showVideo, setShowVideo] = useState(false);
   const [playingAudio, setPlayingAudio] = useState(false);
 
-  const { isRecording, audioBlob, startRecording, stopRecording } =
+  const { isRecording, audioBlob, startRecording, stopRecording, clearAudio } =
     useAudioRecorder();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -186,6 +186,9 @@ export default function EvaluatePage() {
         throw new Error("Failed to submit response");
       }
 
+      // Clear audio so it doesn't get re-submitted for the next image
+      clearAudio();
+
       // Move to next image or done
       if (currentIndex + 1 >= orderedImages.length) {
         if (survey.votingMode === "guided_tour") {
@@ -209,6 +212,7 @@ export default function EvaluatePage() {
     audioBlob,
     isRecording,
     stopRecording,
+    clearAudio,
     participantId,
     currentIndex,
     orderedImages.length,

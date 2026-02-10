@@ -62,7 +62,7 @@ export default function ComparePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { isRecording, audioBlob, startRecording, stopRecording } =
+  const { isRecording, audioBlob, startRecording, stopRecording, clearAudio } =
     useAudioRecorder();
 
   useEffect(() => {
@@ -144,6 +144,9 @@ export default function ComparePage() {
         throw new Error("Failed to submit response");
       }
 
+      // Clear audio so it doesn't get re-submitted for the next pair
+      clearAudio();
+
       if (currentIndex + 1 >= pairs.length) {
         router.push(`/s/${params.code}/done`);
       } else {
@@ -163,6 +166,7 @@ export default function ComparePage() {
     audioBlob,
     isRecording,
     stopRecording,
+    clearAudio,
     participantId,
     currentIndex,
     pairs.length,

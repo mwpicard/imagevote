@@ -62,5 +62,9 @@ export function useAudioRecorder() {
     });
   }, []);
 
-  return { isRecording, audioBlob, startRecording, stopRecording };
+  const clearAudio = useCallback(() => {
+    setAudioBlob(null);
+  }, []);
+
+  return { isRecording, audioBlob, startRecording, stopRecording, clearAudio };
 }
