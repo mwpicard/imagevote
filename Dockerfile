@@ -32,4 +32,4 @@ RUN mkdir -p /app/data/uploads && chown -R nextjs:nodejs /app/data
 USER nextjs
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "mkdir -p /app/data/uploads && node server.js"]
