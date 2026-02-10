@@ -89,6 +89,7 @@ export default function ResultsPage() {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [transcribeStatus, setTranscribeStatus] = useState<TranscribeStatus | null>(null);
   const [transcribing, setTranscribing] = useState(false);
+  const [showAlgorithm, setShowAlgorithm] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(() => {
@@ -174,29 +175,61 @@ export default function ResultsPage() {
     ? `${window.location.origin}/s/${survey.code}`
     : `/s/${survey.code}`;
 
-  // Build per-image stats
+  // Build per-image stats with combined scoring
   const imageStats = survey.images.map((img, idx) => {
     const imgResponses = responses.filter((r) => r.imageId === img.id);
     const votes = imgResponses.filter((r) => r.vote !== null).map((r) => r.vote!);
 
     let voteLabel = "";
     let voteValue = 0;
+    let ratingScore: number | null = null;
 
     if (survey.votingMode === "binary" || isGuidedTour) {
       const up = votes.filter((v) => v === 1).length;
       const down = votes.filter((v) => v === 0).length;
       voteLabel = `\u{1F44D} ${up} / \u{1F44E} ${down}`;
       voteValue = up;
+      if (votes.length > 0) ratingScore = (up / votes.length) * 100;
     } else if (survey.votingMode === "scale") {
       const avg = votes.length > 0 ? votes.reduce((a, b) => a + b, 0) / votes.length : 0;
       voteLabel = `Avg: ${avg.toFixed(1)} / 5`;
       voteValue = avg;
+      if (votes.length > 0) ratingScore = (avg / 5) * 100;
     } else {
       voteValue = votes.filter((v) => v === 1).length;
       voteLabel = `Preferred: ${voteValue}`;
+      if (votes.length > 0) ratingScore = (voteValue / votes.length) * 100;
     }
 
+    // Compute pairwise comparison score (0-100 per comparison)
+    let compPoints = 0;
+    let compCount = 0;
+    for (const r of pairwiseResponses) {
+      if (r.imageAId === img.id) {
+        const s = r.score ?? (r.winnerId === img.id ? -50 : r.winnerId ? 50 : 0);
+        compPoints += (100 - s) / 2;
+        compCount++;
+      } else if (r.imageBId === img.id) {
+        const s = r.score ?? (r.winnerId === img.id ? 50 : r.winnerId ? -50 : 0);
+        compPoints += (100 + s) / 2;
+        compCount++;
+      }
+    }
+    const comparisonScore = compCount > 0 ? compPoints / compCount : null;
+
     const pairwiseWins = pairwiseResponses.filter((r) => r.winnerId === img.id).length;
+
+    // Combined score: average of available phases
+    let combinedScore: number;
+    if (ratingScore !== null && comparisonScore !== null) {
+      combinedScore = (ratingScore + comparisonScore) / 2;
+    } else if (ratingScore !== null) {
+      combinedScore = ratingScore;
+    } else if (comparisonScore !== null) {
+      combinedScore = comparisonScore;
+    } else {
+      combinedScore = 0;
+    }
 
     return {
       id: img.id,
@@ -207,12 +240,15 @@ export default function ResultsPage() {
       voteLabel,
       voteValue,
       pairwiseWins,
+      ratingScore,
+      comparisonScore,
+      combinedScore,
     };
   });
 
-  // Chart data — sorted by score, ties keep original order
+  // Ranking — sorted by combined score, ties keep original order
   const phase1Ranking = [...imageStats].sort((a, b) => {
-    if (b.voteValue !== a.voteValue) return b.voteValue - a.voteValue;
+    if (b.combinedScore !== a.combinedScore) return b.combinedScore - a.combinedScore;
     return survey.images.findIndex((i) => i.id === a.id) - survey.images.findIndex((i) => i.id === b.id);
   });
 
@@ -481,11 +517,44 @@ export default function ResultsPage() {
       })()}
 
       {/* Ranking header */}
-      {responses.length > 0 && (
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Real Time Ranking</h2>
+      {(responses.length > 0 || pairwiseResponses.length > 0) && (
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Real Time Ranking</h2>
+          <button
+            onClick={() => setShowAlgorithm((v) => !v)}
+            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+          >
+            {showAlgorithm ? "Hide scoring" : "How is this scored?"}
+          </button>
+        </div>
       )}
 
-      {/* Per-image breakdown — sorted by rank */}
+      {/* Algorithm explanation */}
+      {showAlgorithm && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6 text-sm text-gray-600 space-y-2">
+          <p className="font-semibold text-gray-800">Scoring Algorithm</p>
+          <p>Each image receives a <strong>combined score (0–100)</strong> computed as follows:</p>
+          <ul className="list-disc list-inside space-y-1 ml-1">
+            <li>
+              <strong>Rating score</strong> — Normalized to 0–100 from individual votes.
+              {(survey.votingMode === "binary" || isGuidedTour)
+                ? " Binary: (thumbs up / total votes) \u00D7 100."
+                : survey.votingMode === "scale"
+                  ? " Scale: (average rating / 5) \u00D7 100."
+                  : " Preferred count / total votes \u00D7 100."}
+            </li>
+            <li>
+              <strong>Comparison score</strong> — From head-to-head comparisons. Each slider position awards 0–100 points per comparison (50 = no preference). The score is the average across all comparisons.
+            </li>
+            <li>
+              <strong>Combined</strong> — If both ratings and comparisons exist, the combined score is their average. Otherwise, whichever is available is used directly.
+            </li>
+          </ul>
+          <p className="text-gray-400">Ties are broken by original image order.</p>
+        </div>
+      )}
+
+      {/* Per-image breakdown — sorted by combined score */}
       <div className="space-y-6">
         {phase1Ranking.map((stat, rank) => (
           <div key={stat.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
@@ -501,11 +570,21 @@ export default function ResultsPage() {
                 </span>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">{stat.name}</h3>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-gray-900">{stat.name}</h3>
+                  <span className="text-lg font-bold text-blue-600 tabular-nums flex-shrink-0">
+                    {Math.round(stat.combinedScore)}<span className="text-sm font-normal text-gray-400">/100</span>
+                  </span>
+                </div>
                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-gray-600">
                   <span>{stat.voteLabel}</span>
                   {stat.pairwiseWins > 0 && (
                     <span>{stat.pairwiseWins} face-off win{stat.pairwiseWins !== 1 ? "s" : ""}</span>
+                  )}
+                  {stat.ratingScore !== null && stat.comparisonScore !== null && (
+                    <span className="text-gray-400">
+                      (rating {Math.round(stat.ratingScore)} + comparison {Math.round(stat.comparisonScore)}) / 2
+                    </span>
                   )}
                 </div>
 
