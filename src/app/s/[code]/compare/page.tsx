@@ -57,7 +57,7 @@ export default function ComparePage() {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
+  const [sliderValue, setSliderValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,8 +102,16 @@ export default function ComparePage() {
     document.documentElement.lang = lang;
   }, [lang]);
 
+  // Derive winnerId from slider
+  const winnerId =
+    sliderValue < 0
+      ? currentPair?.imageA.id ?? null
+      : sliderValue > 0
+        ? currentPair?.imageB.id ?? null
+        : null;
+
   const handleNext = useCallback(async () => {
-    if (!survey || !currentPair || !selectedWinner) return;
+    if (!survey || !currentPair) return;
 
     setSubmitting(true);
 
@@ -117,7 +125,10 @@ export default function ComparePage() {
       formData.append("participantId", participantId);
       formData.append("imageAId", currentPair.imageA.id);
       formData.append("imageBId", currentPair.imageB.id);
-      formData.append("winnerId", selectedWinner);
+      if (winnerId) {
+        formData.append("winnerId", winnerId);
+      }
+      formData.append("score", String(sliderValue));
 
       if (finalAudio && finalAudio.size > 0) {
         const ext = finalAudio.type.includes("mp4") ? ".mp4" : ".webm";
@@ -137,7 +148,7 @@ export default function ComparePage() {
         router.push(`/s/${params.code}/done`);
       } else {
         setCurrentIndex((prev) => prev + 1);
-        setSelectedWinner(null);
+        setSliderValue(0);
       }
     } catch {
       setError("submit_error");
@@ -147,7 +158,8 @@ export default function ComparePage() {
   }, [
     survey,
     currentPair,
-    selectedWinner,
+    winnerId,
+    sliderValue,
     audioBlob,
     isRecording,
     stopRecording,
@@ -196,6 +208,9 @@ export default function ComparePage() {
     );
   }
 
+  const preferA = sliderValue < 0;
+  const preferB = sliderValue > 0;
+
   return (
     <div className="flex min-h-dvh flex-col bg-white dark:bg-zinc-950">
       {/* Phase label + Progress */}
@@ -221,10 +236,9 @@ export default function ComparePage() {
       {/* Side-by-side images */}
       <div className="flex flex-1 items-center justify-center gap-3 px-3 pt-4 pb-2">
         {/* Image A */}
-        <button
-          onClick={() => setSelectedWinner(currentPair.imageA.id)}
+        <div
           className={`relative flex-1 overflow-hidden rounded-xl border-3 transition-all ${
-            selectedWinner === currentPair.imageA.id
+            preferA
               ? "border-blue-500 shadow-lg shadow-blue-500/20"
               : "border-transparent"
           }`}
@@ -234,19 +248,12 @@ export default function ComparePage() {
             alt={currentPair.imageA.label || "Image A"}
             className="max-h-[40dvh] sm:max-h-[50dvh] w-full object-contain"
           />
-          {selectedWinner === currentPair.imageA.id && (
-            <div className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-              </svg>
-            </div>
-          )}
           {currentPair.imageA.label && (
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6">
               <span className="text-sm font-medium text-white">{currentPair.imageA.label}</span>
             </div>
           )}
-        </button>
+        </div>
 
         {/* Divider */}
         <div className="flex flex-col items-center gap-1 text-zinc-300 dark:text-zinc-600">
@@ -254,10 +261,9 @@ export default function ComparePage() {
         </div>
 
         {/* Image B */}
-        <button
-          onClick={() => setSelectedWinner(currentPair.imageB.id)}
+        <div
           className={`relative flex-1 overflow-hidden rounded-xl border-3 transition-all ${
-            selectedWinner === currentPair.imageB.id
+            preferB
               ? "border-blue-500 shadow-lg shadow-blue-500/20"
               : "border-transparent"
           }`}
@@ -267,25 +273,30 @@ export default function ComparePage() {
             alt={currentPair.imageB.label || "Image B"}
             className="max-h-[40dvh] sm:max-h-[50dvh] w-full object-contain"
           />
-          {selectedWinner === currentPair.imageB.id && (
-            <div className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-              </svg>
-            </div>
-          )}
           {currentPair.imageB.label && (
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6">
               <span className="text-sm font-medium text-white">{currentPair.imageB.label}</span>
             </div>
           )}
-        </button>
+        </div>
       </div>
 
-      {/* Tap instruction */}
-      <p className="text-center text-sm text-zinc-400 dark:text-zinc-500">
-        {t(lang, "compare.tapInstruction")}
-      </p>
+      {/* Slider */}
+      <div className="mx-auto w-full max-w-lg px-6 pt-2 pb-1">
+        <input
+          type="range"
+          min={-100}
+          max={100}
+          step={1}
+          value={sliderValue}
+          onChange={(e) => setSliderValue(Number(e.target.value))}
+          className="slider-compare w-full"
+        />
+        <div className="mt-1 flex justify-between text-xs text-zinc-400 dark:text-zinc-500">
+          <span>{t(lang, "compare.stronglyPrefer")}</span>
+          <span>{t(lang, "compare.stronglyPrefer")}</span>
+        </div>
+      </div>
 
       {/* Controls */}
       <div className="flex flex-col items-center gap-5 px-6 pb-8 pt-4">
@@ -341,14 +352,16 @@ export default function ComparePage() {
         {/* Next button */}
         <button
           onClick={handleNext}
-          disabled={!selectedWinner || submitting}
+          disabled={submitting}
           className="h-14 w-full max-w-xs rounded-2xl bg-zinc-900 text-lg font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
         >
           {submitting
             ? t(lang, "eval.submitting")
-            : currentIndex + 1 >= pairs.length
-              ? t(lang, "eval.finish")
-              : t(lang, "eval.next")}
+            : sliderValue === 0
+              ? t(lang, "compare.noPreference")
+              : currentIndex + 1 >= pairs.length
+                ? t(lang, "eval.finish")
+                : t(lang, "eval.next")}
         </button>
       </div>
     </div>

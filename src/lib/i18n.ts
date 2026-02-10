@@ -17,6 +17,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     "intro.firstName": "First name",
     "intro.lastName": "Last name (optional)",
+    "intro.age": "Age (optional)",
     "intro.firstNameRequired": "Please enter your first name",
 
     // Evaluate
@@ -42,6 +43,8 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.pairNofM": "Pair {n} of {total}",
     "compare.vs": "VS",
     "compare.tapInstruction": "Tap the image you prefer",
+    "compare.stronglyPrefer": "Strongly prefer",
+    "compare.noPreference": "No preference",
     "compare.noPairs": "No pairs to compare.",
 
     // Done
@@ -69,6 +72,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     "intro.firstName": "Nombre",
     "intro.lastName": "Apellido (opcional)",
+    "intro.age": "Edad (opcional)",
     "intro.firstNameRequired": "Por favor, introduce tu nombre",
 
     "eval.phaseLabel": "Fase 1 de 2 — Valorar",
@@ -92,6 +96,8 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.pairNofM": "Par {n} de {total}",
     "compare.vs": "VS",
     "compare.tapInstruction": "Toca la imagen que prefieras",
+    "compare.stronglyPrefer": "Prefiero mucho",
+    "compare.noPreference": "Sin preferencia",
     "compare.noPairs": "No hay pares para comparar.",
 
     "done.finalThoughts": "¿Quieres compartir alguna impresión final?",
@@ -118,6 +124,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     "intro.firstName": "Nom",
     "intro.lastName": "Cognom (opcional)",
+    "intro.age": "Edat (opcional)",
     "intro.firstNameRequired": "Si us plau, introdueix el teu nom",
 
     "eval.phaseLabel": "Fase 1 de 2 — Valorar",
@@ -141,6 +148,8 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.pairNofM": "Parell {n} de {total}",
     "compare.vs": "VS",
     "compare.tapInstruction": "Toca la imatge que prefereixis",
+    "compare.stronglyPrefer": "Prefereixo molt",
+    "compare.noPreference": "Sense preferència",
     "compare.noPairs": "No hi ha parells per comparar.",
 
     "done.finalThoughts": "Vols compartir alguna impressió final?",

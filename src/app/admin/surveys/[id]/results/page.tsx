@@ -48,7 +48,8 @@ interface PairwiseResponseData {
   participantId: string;
   imageAId: string;
   imageBId: string;
-  winnerId: string;
+  winnerId: string | null;
+  score: number | null;
   audioFilename: string | null;
   createdAt: string;
 }
@@ -64,6 +65,7 @@ interface Participant {
   id: string;
   firstName: string;
   lastName: string | null;
+  age: number | null;
   createdAt: string;
 }
 
@@ -103,9 +105,11 @@ export default function ResultsPage() {
   function participantName(pid: string) {
     const p = participantMap.get(pid);
     if (!p) return pid.slice(0, 8);
-    return p.lastName
+    let name = p.lastName
       ? `${p.firstName} ${p.lastName.charAt(0)}.`
       : p.firstName;
+    if (p.age) name += ` (${p.age})`;
+    return name;
   }
 
   const sessionUrl = typeof window !== "undefined"
@@ -203,6 +207,7 @@ export default function ResultsPage() {
         participantId: r.participantId,
         participantFirstName: p?.firstName || "",
         participantLastName: p?.lastName || "",
+        participantAge: p?.age ?? "",
         vote: r.vote,
         audioFilename: r.audioFilename || "",
         createdAt: r.createdAt,
@@ -241,12 +246,14 @@ export default function ResultsPage() {
       participantId: r.participantId,
       participantFirstName: p?.firstName || "",
       participantLastName: p?.lastName || "",
+      participantAge: p?.age ?? "",
       imageAId: r.imageAId,
       imageALabel: imageNameMap.get(r.imageAId) || "",
       imageBId: r.imageBId,
       imageBLabel: imageNameMap.get(r.imageBId) || "",
-      winnerId: r.winnerId,
-      winnerLabel: imageNameMap.get(r.winnerId) || "",
+      winnerId: r.winnerId || "",
+      winnerLabel: r.winnerId ? (imageNameMap.get(r.winnerId) || "") : "",
+      score: r.score ?? "",
       audioFilename: r.audioFilename || "",
       createdAt: r.createdAt,
     };

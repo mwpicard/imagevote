@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { LOCALES, type Locale } from "@/lib/i18n";
+import { QRCodeSVG } from "qrcode.react";
 
 interface ImageItem {
   id: string;
   filename: string;
   videoFilename: string | null;
-  audioFilename: string | null;
   label: string | null;
   sortOrder: number;
 }
@@ -18,215 +17,69 @@ interface Survey {
   id: string;
   title: string;
   description: string | null;
-  introHeading: string;
-  introBody: string;
-  introMediaFilename: string | null;
-  outroHeading: string;
-  outroBody: string;
-  outroMediaFilename: string | null;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   language: string;
-  randomizeOrder: boolean;
-  autoRecord: boolean;
   projectId: string | null;
   code: string;
   createdAt: string;
   images: ImageItem[];
 }
 
-export default function EditSurveyPage() {
+interface Participant {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  age: number | null;
+  createdAt: string;
+}
+
+interface ResponseData {
+  id: string;
+  imageId: string;
+  participantId: string;
+  vote: number | null;
+  audioFilename: string | null;
+  createdAt: string;
+}
+
+interface PairwiseResponseData {
+  id: string;
+  participantId: string;
+  winnerId: string | null;
+  createdAt: string;
+}
+
+const MODE_LABELS: Record<string, string> = {
+  binary: "Binary",
+  scale: "Scale (1-5)",
+  pairwise: "Pairwise",
+  guided_tour: "Guided Tour",
+};
+
+export default function SurveyOverviewPage() {
   const { id } = useParams<{ id: string }>();
 
-  const [session, setSession] = useState<Survey | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [responses, setResponses] = useState<ResponseData[]>([]);
+  const [pairwiseResponses, setPairwiseResponses] = useState<PairwiseResponseData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
-
-  // Form fields
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [introHeading, setIntroHeading] = useState("");
-  const [introBody, setIntroBody] = useState("");
-  const [outroHeading, setOutroHeading] = useState("");
-  const [outroBody, setOutroBody] = useState("");
-  const [votingMode, setVotingMode] = useState<"binary" | "scale" | "pairwise" | "guided_tour">("binary");
-  const [language, setLanguage] = useState<Locale>("en");
-  const [randomizeOrder, setRandomizeOrder] = useState(false);
-  const [autoRecord, setAutoRecord] = useState(false);
-
-  // Image upload fields
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [imageLabel, setImageLabel] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const [copied, setCopied] = useState(false);
 
-  const fetchSession = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/surveys/${id}`);
-      if (res.ok) {
-        const data: Survey = await res.json();
-        setSession(data);
-        setTitle(data.title);
-        setDescription(data.description || "");
-        setIntroHeading(data.introHeading);
-        setIntroBody(data.introBody);
-        setOutroHeading(data.outroHeading);
-        setOutroBody(data.outroBody);
-        setVotingMode(data.votingMode);
-        setLanguage((data.language || "en") as Locale);
-        setRandomizeOrder(data.randomizeOrder);
-        setAutoRecord(data.autoRecord ?? false);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
   useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaveMessage("");
-    try {
-      const res = await fetch(`/api/surveys/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          introHeading,
-          introBody,
-          outroHeading,
-          outroBody,
-          votingMode,
-          language,
-          randomizeOrder,
-          autoRecord,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSession(data);
-        setSaveMessage("Saved successfully");
-        setTimeout(() => setSaveMessage(""), 3000);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleUploadImage() {
-    if (!imageFile) return;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("image", imageFile);
-      if (videoFile) formData.append("video", videoFile);
-      if (audioFile) formData.append("audio", audioFile);
-      if (imageLabel.trim()) formData.append("label", imageLabel.trim());
-      const nextOrder = session?.images.length ?? 0;
-      formData.append("sortOrder", String(nextOrder));
-
-      const res = await fetch(`/api/surveys/${id}/images`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        setImageFile(null);
-        setVideoFile(null);
-        setAudioFile(null);
-        setImageLabel("");
-        // Reset the file inputs
-        const imageInput = document.getElementById("imageUpload") as HTMLInputElement;
-        const videoInput = document.getElementById("videoUpload") as HTMLInputElement;
-        const audioInput = document.getElementById("audioUpload") as HTMLInputElement;
-        if (imageInput) imageInput.value = "";
-        if (videoInput) videoInput.value = "";
-        if (audioInput) audioInput.value = "";
-        await fetchSession();
-      }
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleMediaUpload(target: "intro" | "outro", file: File) {
-    const formData = new FormData();
-    formData.append("target", target);
-    formData.append("file", file);
-    const res = await fetch(`/api/surveys/${id}/media`, {
-      method: "POST",
-      body: formData,
+    Promise.all([
+      fetch(`/api/surveys/${id}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/surveys/${id}/participants`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/surveys/${id}/responses`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/surveys/${id}/pairwise-responses`).then((r) => (r.ok ? r.json() : [])),
+    ]).then(([surveyData, participantsData, responsesData, pairwiseData]) => {
+      setSurvey(surveyData);
+      setParticipants(Array.isArray(participantsData) ? participantsData : []);
+      setResponses(Array.isArray(responsesData) ? responsesData : []);
+      setPairwiseResponses(Array.isArray(pairwiseData) ? pairwiseData : []);
+      setLoading(false);
     });
-    if (res.ok) {
-      await fetchSession();
-    }
-  }
-
-  async function handleMediaDelete(target: "intro" | "outro") {
-    const res = await fetch(`/api/surveys/${id}/media`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target }),
-    });
-    if (res.ok) {
-      await fetchSession();
-    }
-  }
-
-  async function handleBulkUpload(files: FileList) {
-    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (imageFiles.length === 0) return;
-
-    setBulkUploading(true);
-    setBulkProgress({ done: 0, total: imageFiles.length });
-
-    let currentOrder = session?.images.length ?? 0;
-    for (const file of imageFiles) {
-      const formData = new FormData();
-      formData.append("image", file);
-      // Use filename without extension as label
-      const label = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
-      formData.append("label", label);
-      formData.append("sortOrder", String(currentOrder));
-
-      await fetch(`/api/surveys/${id}/images`, {
-        method: "POST",
-        body: formData,
-      });
-
-      currentOrder++;
-      setBulkProgress((prev) => ({ ...prev, done: prev.done + 1 }));
-    }
-
-    // Reset
-    const bulkInput = document.getElementById("bulkUpload") as HTMLInputElement;
-    if (bulkInput) bulkInput.value = "";
-    setBulkUploading(false);
-    setBulkProgress({ done: 0, total: 0 });
-    await fetchSession();
-  }
-
-  async function handleDeleteImage(imageId: string) {
-    if (!confirm("Delete this image?")) return;
-    const res = await fetch(`/api/surveys/${id}/images`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageId }),
-    });
-    if (res.ok) {
-      await fetchSession();
-    }
-  }
+  }, [id]);
 
   if (loading) {
     return (
@@ -236,7 +89,7 @@ export default function EditSurveyPage() {
     );
   }
 
-  if (!session) {
+  if (!survey) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <div className="text-center">
@@ -252,508 +105,74 @@ export default function EditSurveyPage() {
     );
   }
 
-  const sessionUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/s/${session.code}`;
+  const sessionUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/s/${survey.code}`;
+  const isGuidedTour = survey.votingMode === "guided_tour";
 
-  const inputClass =
-    "w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
-  const labelClass = "block text-sm font-medium text-zinc-700 mb-1.5";
+  // Per-participant response counts
+  const responsesPerParticipant = new Map<string, number>();
+  for (const r of responses) {
+    responsesPerParticipant.set(r.participantId, (responsesPerParticipant.get(r.participantId) || 0) + 1);
+  }
+  const pairwisePerParticipant = new Map<string, number>();
+  for (const r of pairwiseResponses) {
+    pairwisePerParticipant.set(r.participantId, (pairwisePerParticipant.get(r.participantId) || 0) + 1);
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-12">
         {/* Header */}
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <Link
-              href={session.projectId ? `/admin/projects/${session.projectId}` : "/admin/projects"}
-              className="text-sm text-zinc-500 hover:text-zinc-700"
-            >
-              &larr; {session.projectId ? "Back to project" : "Back to projects"}
-            </Link>
-            <h1 className="mt-1 text-2xl font-bold text-zinc-900">
-              Edit Survey
-            </h1>
-          </div>
+        <div className="mb-8">
           <Link
-            href={`/admin/surveys/${id}/results`}
-            className="flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+            href={survey.projectId ? `/admin/projects/${survey.projectId}` : "/admin/projects"}
+            className="text-sm text-zinc-500 hover:text-zinc-700"
           >
-            View Results
+            &larr; {survey.projectId ? "Back to project" : "Back to projects"}
           </Link>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-zinc-900">{survey.title}</h1>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+                <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700">
+                  {MODE_LABELS[survey.votingMode] || survey.votingMode}
+                </span>
+                <span>{survey.language.toUpperCase()}</span>
+                <span>&middot;</span>
+                <span>{new Date(survey.createdAt).toLocaleDateString()}</span>
+                <span>&middot;</span>
+                <span>{survey.images.length} image{survey.images.length !== 1 ? "s" : ""}</span>
+              </div>
+              {survey.description && (
+                <p className="mt-2 text-sm text-zinc-500">{survey.description}</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href={`/admin/surveys/${id}/edit`}
+                className="flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+              >
+                Edit Survey
+              </Link>
+              <Link
+                href={`/admin/surveys/${id}/results`}
+                className="flex h-10 items-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                Full Results
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Share Section */}
-        <div className="mb-8 rounded-xl border border-blue-100 bg-blue-50 p-5">
-          <h2 className="text-sm font-semibold text-blue-900">
-            Share this survey
-          </h2>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <input
-              readOnly
-              value={sessionUrl}
-              className="h-10 flex-1 rounded-lg border border-blue-200 bg-white px-3 text-sm text-zinc-700 focus:outline-none"
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-            />
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(sessionUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-              className="h-10 min-w-[5rem] rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-          <p className="mt-2 text-sm text-blue-700">
-            Survey code: <span className="font-mono font-bold">{session.code}</span>
-          </p>
-        </div>
-
-        {/* Session Settings Form */}
-        <form onSubmit={handleSave} className="space-y-6">
-          <div>
-            <label htmlFor="title" className={labelClass}>
-              Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="title"
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="description" className={labelClass}>
-              Description
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="mb-4 text-base font-semibold text-zinc-900">
-              Intro Screen
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="introHeading" className={labelClass}>
-                  Heading
-                </label>
-                <input
-                  id="introHeading"
-                  type="text"
-                  value={introHeading}
-                  onChange={(e) => setIntroHeading(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="introBody" className={labelClass}>
-                  Body
-                </label>
-                <textarea
-                  id="introBody"
-                  value={introBody}
-                  onChange={(e) => setIntroBody(e.target.value)}
-                  rows={3}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Background image or video</label>
-                {session.introMediaFilename ? (
-                  <div className="flex items-center gap-3">
-                    {session.introMediaFilename.match(/\.(mp4|webm|mov)$/i) ? (
-                      <video
-                        src={`/api/uploads?file=${encodeURIComponent(session.introMediaFilename)}`}
-                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={`/api/uploads?file=${encodeURIComponent(session.introMediaFilename)}`}
-                        alt="Intro media"
-                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleMediaDelete("intro")}
-                      className="text-sm text-red-600 hover:text-red-700"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleMediaUpload("intro", f);
-                    }}
-                    className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="mb-4 text-base font-semibold text-zinc-900">
-              Outro Screen
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="outroHeading" className={labelClass}>
-                  Heading
-                </label>
-                <input
-                  id="outroHeading"
-                  type="text"
-                  value={outroHeading}
-                  onChange={(e) => setOutroHeading(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="outroBody" className={labelClass}>
-                  Body
-                </label>
-                <textarea
-                  id="outroBody"
-                  value={outroBody}
-                  onChange={(e) => setOutroBody(e.target.value)}
-                  rows={3}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Background image or video</label>
-                {session.outroMediaFilename ? (
-                  <div className="flex items-center gap-3">
-                    {session.outroMediaFilename.match(/\.(mp4|webm|mov)$/i) ? (
-                      <video
-                        src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename)}`}
-                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={`/api/uploads?file=${encodeURIComponent(session.outroMediaFilename)}`}
-                        alt="Outro media"
-                        className="h-20 w-32 rounded-lg border border-zinc-200 object-cover"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleMediaDelete("outro")}
-                      className="text-sm text-red-600 hover:text-red-700"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleMediaUpload("outro", f);
-                    }}
-                    className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="mb-4 text-base font-semibold text-zinc-900">
-              Voting Settings
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="votingMode" className={labelClass}>
-                  Voting Mode
-                </label>
-                <select
-                  id="votingMode"
-                  value={votingMode}
-                  onChange={(e) =>
-                    setVotingMode(e.target.value as "binary" | "scale" | "pairwise" | "guided_tour")
-                  }
-                  className={inputClass}
-                >
-                  <option value="binary">Binary (Yes / No)</option>
-                  <option value="scale">Scale (1-5)</option>
-                  <option value="pairwise">Pairwise Comparison</option>
-                  <option value="guided_tour">Guided Tour (Rate + Compare)</option>
-                </select>
-                {votingMode === "guided_tour" && (
-                  <div className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                    <p>Phase 1: Rate each image. Phase 2: Compare all pairs side by side.</p>
-                    {session && session.images.length > 0 && (
-                      <p className="mt-1 font-medium">
-                        {session.images.length} images = {(session.images.length * (session.images.length - 1)) / 2} pairs
-                        {session.images.length > 10 && (
-                          <span className="ml-1 text-amber-700"> (this may be long for participants)</span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  id="randomizeOrder"
-                  type="checkbox"
-                  checked={randomizeOrder}
-                  onChange={(e) => setRandomizeOrder(e.target.checked)}
-                  className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="randomizeOrder" className="text-sm text-zinc-700">
-                  Randomize image order for each participant
-                </label>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  id="autoRecord"
-                  type="checkbox"
-                  checked={autoRecord}
-                  onChange={(e) => setAutoRecord(e.target.checked)}
-                  className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="autoRecord" className="text-sm text-zinc-700">
-                  Auto-record participant audio for each image
-                </label>
-              </div>
-              <div>
-                <label htmlFor="language" className={labelClass}>
-                  Participant Language
-                </label>
-                <select
-                  id="language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value as Locale)}
-                  className={inputClass}
-                >
-                  {LOCALES.map((l) => (
-                    <option key={l.value} value={l.value}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1.5 text-sm text-zinc-400">
-                  UI text shown to participants will be in this language. Intro/outro text above is shown as-is.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              disabled={saving || !title.trim()}
-              className="flex h-12 flex-1 items-center justify-center rounded-lg bg-blue-600 text-base font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Settings"}
-            </button>
-            {saveMessage && (
-              <span className="text-sm font-medium text-green-600">
-                {saveMessage}
-              </span>
-            )}
-          </div>
-        </form>
-
-        {/* Image Management */}
-        <div className="mt-12">
-          <h2 className="text-xl font-bold text-zinc-900">Images</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            {session.images.length} image{session.images.length !== 1 ? "s" : ""} in this survey
-          </p>
-
-          {/* Bulk Upload Area */}
-          <div className="mt-6 rounded-xl border border-dashed border-zinc-300 bg-white p-6">
-            <h3 className="mb-1 text-sm font-semibold text-zinc-700">
-              Add Images
-            </h3>
-            <p className="mb-4 text-sm text-zinc-500">
-              Select multiple files or an entire folder. Labels are set from filenames.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex h-11 cursor-pointer items-center rounded-lg bg-zinc-800 px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-700">
-                Choose Files
-                <input
-                  id="bulkUpload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      handleBulkUpload(e.target.files);
-                    }
-                  }}
-                  disabled={bulkUploading}
-                />
-              </label>
-              <label className="flex h-11 cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50">
-                Choose Folder
-                <input
-                  type="file"
-                  accept="image/*"
-                  /* @ts-expect-error webkitdirectory is not in TS types */
-                  webkitdirectory=""
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      handleBulkUpload(e.target.files);
-                    }
-                  }}
-                  disabled={bulkUploading}
-                />
-              </label>
-              {bulkUploading && (
-                <span className="text-sm text-zinc-500">
-                  Uploading {bulkProgress.done}/{bulkProgress.total}...
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Single Image + Video Upload */}
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm font-medium text-zinc-500 hover:text-zinc-700">
-              Add single image with video/audio
-            </summary>
-            <div className="mt-3 rounded-xl border border-dashed border-zinc-300 bg-white p-6 space-y-4">
-              <div>
-                <label htmlFor="imageUpload" className={labelClass}>
-                  Image file <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="imageUpload"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-                />
-              </div>
-              <div>
-                <label htmlFor="videoUpload" className={labelClass}>
-                  Video file (optional)
-                </label>
-                <input
-                  id="videoUpload"
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-                />
-              </div>
-              <div>
-                <label htmlFor="audioUpload" className={labelClass}>
-                  Audio file (optional — auto-plays during evaluation)
-                </label>
-                <input
-                  id="audioUpload"
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-                />
-              </div>
-              <div>
-                <label htmlFor="imageLabel" className={labelClass}>
-                  Label (optional)
-                </label>
-                <input
-                  id="imageLabel"
-                  type="text"
-                  value={imageLabel}
-                  onChange={(e) => setImageLabel(e.target.value)}
-                  placeholder="e.g. Design A"
-                  className={inputClass}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleUploadImage}
-                disabled={!imageFile || uploading}
-                className="flex h-11 items-center rounded-lg bg-zinc-800 px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
-              >
-                {uploading ? "Uploading..." : "Add Image"}
-              </button>
-            </div>
-          </details>
-
-          {/* Image List */}
-          {session.images.length > 0 && (
-            <div className="mt-6 space-y-3">
-              {session.images.map((img, index) => (
-                <div
-                  key={img.id}
-                  className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4"
-                >
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-sm font-semibold text-zinc-500">
-                    {index + 1}
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/uploads?file=${img.filename}`}
-                    alt={img.label || `Image ${index + 1}`}
-                    className="h-16 w-16 flex-shrink-0 rounded-lg border border-zinc-200 object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-zinc-900">
-                      {img.label || "No label"}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
-                      {img.videoFilename && (
-                        <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
-                          Video
-                        </span>
-                      )}
-                      {img.audioFilename && (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                          Audio
-                        </span>
-                      )}
-                      <span>Order: {img.sortOrder}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteImage(img.id)}
-                    className="flex h-9 flex-shrink-0 items-center rounded-lg border border-zinc-200 px-3 text-sm text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Share Section (bottom) */}
-          <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-5">
-            <h2 className="text-sm font-semibold text-blue-900">
-              Share this survey
-            </h2>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+          <QRCodeSVG value={sessionUrl} size={100} />
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-sm font-medium text-zinc-700 mb-1.5">Share this survey</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <input
                 readOnly
                 value={sessionUrl}
-                className="h-10 flex-1 rounded-lg border border-blue-200 bg-white px-3 text-sm text-zinc-700 focus:outline-none"
+                className="h-10 flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-700 focus:outline-none"
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
               <button
@@ -767,10 +186,78 @@ export default function EditSurveyPage() {
                 {copied ? "Copied!" : "Copy"}
               </button>
             </div>
-            <p className="mt-2 text-sm text-blue-700">
-              Survey code: <span className="font-mono font-bold">{session.code}</span>
+            <p className="mt-2 text-sm text-zinc-500">
+              Code: <span className="font-mono font-bold">{survey.code}</span>
             </p>
           </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className={`mb-8 grid gap-4 ${isGuidedTour ? "grid-cols-3" : "grid-cols-2"}`}>
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 text-center">
+            <p className="text-3xl font-bold text-zinc-900">{participants.length}</p>
+            <p className="mt-1 text-sm text-zinc-500">Participant{participants.length !== 1 ? "s" : ""}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 text-center">
+            <p className="text-3xl font-bold text-zinc-900">{responses.length}</p>
+            <p className="mt-1 text-sm text-zinc-500">Response{responses.length !== 1 ? "s" : ""}</p>
+          </div>
+          {isGuidedTour && (
+            <div className="rounded-xl border border-zinc-200 bg-white p-5 text-center">
+              <p className="text-3xl font-bold text-zinc-900">{pairwiseResponses.length}</p>
+              <p className="mt-1 text-sm text-zinc-500">Comparison{pairwiseResponses.length !== 1 ? "s" : ""}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Participant Sessions */}
+        <div>
+          <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+            Participants ({participants.length})
+          </h2>
+
+          {participants.length === 0 ? (
+            <div className="rounded-xl border border-zinc-200 bg-white py-12 text-center">
+              <p className="text-zinc-400">No participants yet</p>
+              <p className="mt-1 text-sm text-zinc-400">Share the survey link to start collecting responses</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {participants.map((p) => {
+                const rCount = responsesPerParticipant.get(p.id) || 0;
+                const pCount = pairwisePerParticipant.get(p.id) || 0;
+                const name = p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName;
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white px-5 py-4"
+                  >
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-600">
+                      {p.firstName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-zinc-900">
+                        {name}
+                        {p.age != null && (
+                          <span className="ml-1.5 text-zinc-400">({p.age})</span>
+                        )}
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-400">
+                        {new Date(p.createdAt).toLocaleDateString()}{" "}
+                        {new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-3 text-xs text-zinc-500">
+                      <span>{rCount} rating{rCount !== 1 ? "s" : ""}</span>
+                      {isGuidedTour && (
+                        <span>{pCount} comparison{pCount !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

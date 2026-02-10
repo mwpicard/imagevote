@@ -37,12 +37,14 @@ export async function POST(
   const participantId = formData.get("participantId") as string;
   const imageAId = formData.get("imageAId") as string;
   const imageBId = formData.get("imageBId") as string;
-  const winnerId = formData.get("winnerId") as string;
+  const winnerId = (formData.get("winnerId") as string) || null;
+  const scoreRaw = formData.get("score") as string | null;
+  const score = scoreRaw !== null ? parseInt(scoreRaw, 10) : null;
   const audio = formData.get("audio") as File | null;
 
-  if (!participantId || !imageAId || !imageBId || !winnerId) {
+  if (!participantId || !imageAId || !imageBId) {
     return NextResponse.json(
-      { error: "participantId, imageAId, imageBId, and winnerId are required" },
+      { error: "participantId, imageAId, and imageBId are required" },
       { status: 400 }
     );
   }
@@ -64,6 +66,7 @@ export async function POST(
     imageAId,
     imageBId,
     winnerId,
+    score,
     audioFilename,
     createdAt: new Date().toISOString(),
   });

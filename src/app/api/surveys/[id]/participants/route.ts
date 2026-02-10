@@ -40,11 +40,12 @@ export async function POST(
     surveyId: id,
     firstName,
     lastName: body.lastName?.trim() || null,
+    age: body.age ? Number(body.age) : null,
     createdAt: new Date().toISOString(),
   });
 
   return NextResponse.json(
-    { id: participantId, firstName, lastName: body.lastName?.trim() || null },
+    { id: participantId, firstName, lastName: body.lastName?.trim() || null, age: body.age ? Number(body.age) : null },
     { status: 201 }
   );
 }

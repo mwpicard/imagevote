@@ -78,7 +78,8 @@ sqlite.exec(`
     participant_id TEXT NOT NULL,
     image_a_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
     image_b_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
-    winner_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+    winner_id TEXT REFERENCES images(id) ON DELETE CASCADE,
+    score INTEGER,
     audio_filename TEXT,
     transcription TEXT,
     created_at TEXT NOT NULL
@@ -89,6 +90,7 @@ sqlite.exec(`
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
     last_name TEXT,
+    age INTEGER,
     created_at TEXT NOT NULL
   );
 
@@ -120,4 +122,10 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE images ADD COLUMN audio_filename TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE participants ADD COLUMN age INTEGER`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE pairwise_responses ADD COLUMN score INTEGER`);
 } catch { /* column already exists */ }

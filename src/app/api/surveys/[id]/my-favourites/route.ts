@@ -24,7 +24,9 @@ async function pairwiseFrontRunners(
 
   const winCounts: Record<string, number> = {};
   for (const w of wins) {
-    winCounts[w.winnerId] = (winCounts[w.winnerId] || 0) + 1;
+    if (w.winnerId) {
+      winCounts[w.winnerId] = (winCounts[w.winnerId] || 0) + 1;
+    }
   }
 
   const counts = Object.values(winCounts);

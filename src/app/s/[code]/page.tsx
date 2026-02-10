@@ -29,6 +29,7 @@ export default function IntroPage() {
   const [lang, setLang] = useState<Locale>("en");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [age, setAge] = useState("");
   const [nameError, setNameError] = useState(false);
   const [starting, setStarting] = useState(false);
 
@@ -78,6 +79,7 @@ export default function IntroPage() {
         body: JSON.stringify({
           firstName: firstName.trim(),
           lastName: lastName.trim() || undefined,
+          age: age ? Number(age) : undefined,
         }),
       });
 
@@ -85,7 +87,11 @@ export default function IntroPage() {
 
       const data = await res.json();
       localStorage.setItem(`imagevote-participant-${params.code}`, data.id);
-      router.push(`/s/${params.code}/evaluate`);
+      router.push(
+        survey.votingMode === "pairwise"
+          ? `/s/${params.code}/compare`
+          : `/s/${params.code}/evaluate`
+      );
     } catch {
       setError("load_error");
       setStarting(false);
@@ -217,6 +223,20 @@ export default function IntroPage() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             placeholder={t(lang, "intro.lastName")}
+            className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
+              hasMedia
+                ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
+                : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+            }`}
+          />
+          <input
+            type="number"
+            inputMode="numeric"
+            min="1"
+            max="120"
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+            placeholder={t(lang, "intro.age")}
             className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
               hasMedia
                 ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"

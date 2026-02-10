@@ -87,7 +87,8 @@ export const pairwiseResponses = sqliteTable("pairwise_responses", {
   participantId: text("participant_id").notNull(),
   imageAId: text("image_a_id").notNull().references(() => images.id, { onDelete: "cascade" }),
   imageBId: text("image_b_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  winnerId: text("winner_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  winnerId: text("winner_id").references(() => images.id, { onDelete: "cascade" }),
+  score: integer("score"),
   audioFilename: text("audio_filename"),
   transcription: text("transcription"),
   createdAt: text("created_at").notNull(),
@@ -109,6 +110,7 @@ export const participants = sqliteTable("participants", {
   surveyId: text("session_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   firstName: text("first_name").notNull(),
   lastName: text("last_name"),
+  age: integer("age"),
   createdAt: text("created_at").notNull(),
 });
 
