@@ -178,7 +178,6 @@ export default function ResultsPage() {
   const imageStats = survey.images.map((img, idx) => {
     const imgResponses = responses.filter((r) => r.imageId === img.id);
     const votes = imgResponses.filter((r) => r.vote !== null).map((r) => r.vote!);
-    const audioCount = imgResponses.filter((r) => r.audioFilename).length;
 
     let voteLabel = "";
     let voteValue = 0;
@@ -197,6 +196,8 @@ export default function ResultsPage() {
       voteLabel = `Preferred: ${voteValue}`;
     }
 
+    const pairwiseWins = pairwiseResponses.filter((r) => r.winnerId === img.id).length;
+
     return {
       id: img.id,
       name: img.label || `Image ${idx + 1}`,
@@ -205,7 +206,7 @@ export default function ResultsPage() {
       totalVotes: votes.length,
       voteLabel,
       voteValue,
-      audioCount,
+      pairwiseWins,
     };
   });
 
@@ -479,9 +480,9 @@ export default function ResultsPage() {
         );
       })()}
 
-      {/* Phase 1 header for guided tour */}
-      {isGuidedTour && responses.length > 0 && (
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Phase 1 — Individual Ratings</h2>
+      {/* Ranking header */}
+      {responses.length > 0 && (
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Real Time Ranking</h2>
       )}
 
       {/* Per-image breakdown — sorted by rank */}
@@ -501,10 +502,11 @@ export default function ResultsPage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900">{stat.name}</h3>
-                <div className="flex gap-6 mt-2 text-sm text-gray-600">
-                  <span>{stat.totalVotes} vote{stat.totalVotes !== 1 ? "s" : ""}</span>
+                <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-gray-600">
                   <span>{stat.voteLabel}</span>
-                  <span>{stat.audioCount} recording{stat.audioCount !== 1 ? "s" : ""}</span>
+                  {stat.pairwiseWins > 0 && (
+                    <span>{stat.pairwiseWins} face-off win{stat.pairwiseWins !== 1 ? "s" : ""}</span>
+                  )}
                 </div>
 
                 {/* Audio recordings for this image */}
