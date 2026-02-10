@@ -209,33 +209,53 @@ export default function ResultsPage() {
     };
   });
 
-  // Chart data
-  const chartData = imageStats.map((s) => ({
+  // Chart data — sorted by score, ties keep original order
+  const phase1Ranking = [...imageStats].sort((a, b) => {
+    if (b.voteValue !== a.voteValue) return b.voteValue - a.voteValue;
+    return survey.images.findIndex((i) => i.id === a.id) - survey.images.findIndex((i) => i.id === b.id);
+  });
+
+  const chartData = phase1Ranking.map((s) => ({
     name: s.name,
     value: s.voteValue,
+    filename: s.filename,
+    id: s.id,
   }));
 
-  // Pairwise ranking data (win percentage per image)
+  // Pairwise ranking data — score-based (slider gives 0-100 pts per comparison)
   const imageNameMap = new Map(survey.images.map((img, idx) => [img.id, img.label || `Image ${idx + 1}`]));
 
   const imageFilenameMap = new Map(survey.images.map((img) => [img.id, img.filename]));
 
   const rankingData = survey.images.map((img, idx) => {
-    const wins = pairwiseResponses.filter((r) => r.winnerId === img.id).length;
-    const total = pairwiseResponses.filter(
-      (r) => r.imageAId === img.id || r.imageBId === img.id
-    ).length;
+    let points = 0;
+    let comparisons = 0;
+    for (const r of pairwiseResponses) {
+      if (r.imageAId === img.id) {
+        // score: -100 (strongly prefer A) to +100 (strongly prefer B)
+        // Normalize so imageA earns 0–100: (100 - score) / 2
+        const s = r.score ?? (r.winnerId === img.id ? -50 : r.winnerId ? 50 : 0);
+        points += (100 - s) / 2;
+        comparisons++;
+      } else if (r.imageBId === img.id) {
+        // Normalize so imageB earns 0–100: (100 + score) / 2
+        const s = r.score ?? (r.winnerId === img.id ? 50 : r.winnerId ? -50 : 0);
+        points += (100 + s) / 2;
+        comparisons++;
+      }
+    }
     return {
       name: img.label || `Image ${idx + 1}`,
       id: img.id,
       filename: img.filename,
-      wins,
-      total,
+      points: Math.round(points),
+      comparisons,
+      originalIndex: idx,
     };
-  }).sort((a, b) => b.wins - a.wins);
+  }).sort((a, b) => b.points - a.points || a.originalIndex - b.originalIndex);
 
-  const pairwiseWinner = rankingData.length > 0 && rankingData[0].wins > 0 ? rankingData[0] : null;
-  const isTie = pairwiseWinner && rankingData.length > 1 && rankingData[1].wins === pairwiseWinner.wins;
+  const pairwiseWinner = rankingData.length > 0 && rankingData[0].points > 0 ? rankingData[0] : null;
+  const isTie = pairwiseWinner && rankingData.length > 1 && rankingData[1].points === pairwiseWinner.points;
 
   // Head-to-head matrix
   function getH2HRecord(imgA: string, imgB: string) {
@@ -416,7 +436,7 @@ export default function ResultsPage() {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Phase 1 — Individual Ratings</h2>
       )}
 
-      {/* Chart */}
+      {/* Chart + Ranking */}
       {chartData.length > 0 && responses.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -430,7 +450,29 @@ export default function ResultsPage() {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+              <XAxis
+                dataKey="name"
+                tick={(props) => {
+                  const { x, y, payload } = props as { x: number; y: number; payload: { value: string } };
+                  const item = chartData.find((d) => d.name === payload.value);
+                  if (!item) return <text />;
+                  return (
+                    <g transform={`translate(${x},${y + 8})`}>
+                      <clipPath id={`clip-p1-${item.id}`}>
+                        <circle cx={0} cy={16} r={16} />
+                      </clipPath>
+                      <image
+                        href={`/api/uploads?file=${encodeURIComponent(item.filename)}`}
+                        x={-16} y={0} width={32} height={32}
+                        clipPath={`url(#clip-p1-${item.id})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    </g>
+                  );
+                }}
+                interval={0}
+                height={50}
+              />
               <YAxis />
               <Tooltip />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
@@ -441,6 +483,24 @@ export default function ResultsPage() {
             </BarChart>
           </ResponsiveContainer>
           </div>
+          {/* Compact ranking */}
+          {phase1Ranking.length > 1 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Ranking</h3>
+              <div className="space-y-1">
+                {phase1Ranking.map((stat, rank) => (
+                  <div key={stat.id} className="flex items-center gap-2.5 text-sm">
+                    <span className="w-5 text-right font-bold text-gray-400 text-xs">#{rank + 1}</span>
+                    <img src={`/api/uploads?file=${stat.filename}`} alt={stat.name} className="h-7 w-7 rounded object-cover flex-shrink-0" />
+                    <span className="flex-1 truncate font-medium text-gray-900">{stat.name}</span>
+                    <span className="text-gray-500 font-mono text-xs tabular-nums">
+                      {survey.votingMode === "scale" ? stat.voteValue.toFixed(1) : stat.voteValue}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -511,11 +571,11 @@ export default function ResultsPage() {
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-0.5">
                   {isTie
-                    ? rankingData.filter((r) => r.wins === pairwiseWinner.wins).map((r) => r.name).join(" & ")
+                    ? rankingData.filter((r) => r.points === pairwiseWinner.points).map((r) => r.name).join(" & ")
                     : pairwiseWinner.name}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {pairwiseWinner.wins} point{pairwiseWinner.wins !== 1 ? "s" : ""} ({pairwiseWinner.wins}/{pairwiseWinner.total} matchups won)
+                  {pairwiseWinner.points} preference pts across {pairwiseWinner.comparisons} comparison{pairwiseWinner.comparisons !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
@@ -539,7 +599,7 @@ export default function ResultsPage() {
 
           {/* Overall ranking chart */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Points (Victories)</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Preference Score</h3>
             <div className="h-[240px] sm:h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rankingData} margin={{ bottom: 50 }}>
@@ -571,8 +631,8 @@ export default function ResultsPage() {
                   height={50}
                 />
                 <YAxis allowDecimals={false} />
-                <Tooltip formatter={(value) => [`${value} pts`, "Wins"]} />
-                <Bar dataKey="wins" radius={[6, 6, 0, 0]}>
+                <Tooltip formatter={(value) => [`${value} pts`, "Score"]} />
+                <Bar dataKey="points" radius={[6, 6, 0, 0]}>
                   {rankingData.map((_, index) => (
                     <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -580,6 +640,22 @@ export default function ResultsPage() {
               </BarChart>
             </ResponsiveContainer>
             </div>
+            {/* Compact ranking */}
+            {rankingData.length > 1 && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Ranking</h3>
+                <div className="space-y-1">
+                  {rankingData.map((item, rank) => (
+                    <div key={item.id} className="flex items-center gap-2.5 text-sm">
+                      <span className="w-5 text-right font-bold text-gray-400 text-xs">#{rank + 1}</span>
+                      <img src={`/api/uploads?file=${item.filename}`} alt={item.name} className="h-7 w-7 rounded object-cover flex-shrink-0" />
+                      <span className="flex-1 truncate font-medium text-gray-900">{item.name}</span>
+                      <span className="text-gray-500 font-mono text-xs tabular-nums">{item.points} pts</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Head-to-head matrix */}
@@ -684,14 +760,14 @@ export default function ResultsPage() {
                       );
                     })}
                     <td className="p-2 text-center bg-gray-100 font-bold text-gray-900">
-                      {rankingData.find((r) => r.id === rowImg.id)?.wins ?? 0}
+                      {rankingData.find((r) => r.id === rowImg.id)?.points ?? 0}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="mt-3 text-xs text-gray-400">
-              Each cell shows the winner of that matchup. Green = row image won, Red = column image won. Pts = total victories.
+              Each cell shows the winner of that matchup. Green = row image won, Red = column image won. Pts = preference score (slider-weighted).
             </p>
           </div>
 
