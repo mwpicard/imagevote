@@ -429,33 +429,21 @@ export default function ResultsPage() {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Phase 1 — Individual Ratings</h2>
       )}
 
-      {/* Ranking */}
-      {phase1Ranking.length > 1 && responses.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">Ranking</h2>
-          <div className="space-y-1.5">
-            {phase1Ranking.map((stat, rank) => (
-              <div key={stat.id} className="flex items-center gap-2.5 text-sm">
-                <span className="w-5 text-right font-bold text-gray-400 text-xs">#{rank + 1}</span>
-                <img src={`/api/uploads?file=${stat.filename}`} alt={stat.name} className="h-7 w-7 rounded object-cover flex-shrink-0" />
-                <span className="truncate font-medium text-gray-900">{stat.name}</span>
-                <span className="text-gray-400 text-xs">{stat.voteLabel}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Per-image breakdown */}
+      {/* Per-image breakdown — sorted by rank */}
       <div className="space-y-6">
-        {imageStats.map((stat) => (
+        {phase1Ranking.map((stat, rank) => (
           <div key={stat.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-              <img
-                src={`/api/uploads?file=${stat.filename}`}
-                alt={stat.name}
-                className="w-full sm:w-32 h-48 sm:h-32 object-cover rounded-lg flex-shrink-0"
-              />
+              <div className="relative flex-shrink-0">
+                <img
+                  src={`/api/uploads?file=${stat.filename}`}
+                  alt={stat.name}
+                  className="w-full sm:w-32 h-48 sm:h-32 object-cover rounded-lg"
+                />
+                <span className="absolute -top-2 -left-2 flex h-7 w-7 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white shadow">
+                  #{rank + 1}
+                </span>
+              </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900">{stat.name}</h3>
                 <div className="flex gap-6 mt-2 text-sm text-gray-600">
