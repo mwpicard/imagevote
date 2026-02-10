@@ -5,7 +5,9 @@ import { eq } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export async function POST(
   req: NextRequest,
@@ -43,7 +45,7 @@ export async function POST(
   // Send notification to admin
   if (adminEmail) {
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: "Dormy <onboarding@resend.dev>",
         to: adminEmail,
         replyTo: email,
@@ -64,7 +66,7 @@ export async function POST(
 
   // Send confirmation to the participant
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: "Dormy <onboarding@resend.dev>",
       to: email,
       replyTo: adminEmail || "mwpicard@gmail.com",
