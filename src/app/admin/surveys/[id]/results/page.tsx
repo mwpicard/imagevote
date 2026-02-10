@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
@@ -38,6 +38,7 @@ interface ResponseData {
   participantId: string;
   vote: number | null;
   audioFilename: string | null;
+  transcription: string | null;
   createdAt: string;
   image: ImageData;
 }
@@ -51,6 +52,7 @@ interface PairwiseResponseData {
   winnerId: string | null;
   score: number | null;
   audioFilename: string | null;
+  transcription: string | null;
   createdAt: string;
 }
 
@@ -58,6 +60,7 @@ interface OutroRecording {
   id: string;
   participantId: string;
   audioFilename: string;
+  transcription: string | null;
   createdAt: string;
 }
 
@@ -67,6 +70,11 @@ interface Participant {
   lastName: string | null;
   age: number | null;
   createdAt: string;
+}
+
+interface TranscribeStatus {
+  available: boolean;
+  pending: { responses: number; pairwise: number; outro: number; total: number };
 }
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
@@ -79,8 +87,11 @@ export default function ResultsPage() {
   const [outroRecordings, setOutroRecordings] = useState<OutroRecording[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [transcribeStatus, setTranscribeStatus] = useState<TranscribeStatus | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     fetch(`/api/surveys/${id}`).then((r) => r.json()).then(setSurvey);
     fetch(`/api/surveys/${id}/responses`).then((r) => r.json()).then(setResponses);
     fetch(`/api/surveys/${id}/pairwise-responses`)
@@ -92,7 +103,54 @@ export default function ResultsPage() {
     fetch(`/api/surveys/${id}/participants`)
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setParticipants(Array.isArray(data) ? data : []));
+    fetch(`/api/surveys/${id}/transcribe`)
+      .then((r) => r.ok ? r.json() : null)
+      .then(setTranscribeStatus);
   }, [id]);
+
+  // Initial fetch + polling with visibility API
+  useEffect(() => {
+    fetchData();
+
+    function startPolling() {
+      stopPolling();
+      intervalRef.current = setInterval(fetchData, 10_000);
+    }
+
+    function stopPolling() {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    function handleVisibility() {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        fetchData();
+        startPolling();
+      }
+    }
+
+    startPolling();
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fetchData]);
+
+  async function handleTranscribe() {
+    setTranscribing(true);
+    try {
+      await fetch(`/api/surveys/${id}/transcribe`, { method: "POST" });
+      fetchData();
+    } finally {
+      setTranscribing(false);
+    }
+  }
 
   if (!survey) {
     return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;
@@ -210,6 +268,7 @@ export default function ResultsPage() {
         participantAge: p?.age ?? "",
         vote: r.vote,
         audioFilename: r.audioFilename || "",
+        transcription: r.transcription || "",
         createdAt: r.createdAt,
       };
     });
@@ -255,6 +314,7 @@ export default function ResultsPage() {
       winnerLabel: r.winnerId ? (imageNameMap.get(r.winnerId) || "") : "",
       score: r.score ?? "",
       audioFilename: r.audioFilename || "",
+      transcription: r.transcription || "",
       createdAt: r.createdAt,
     };
     });
@@ -284,6 +344,9 @@ export default function ResultsPage() {
     URL.revokeObjectURL(url);
   }
 
+  const pendingCount = transcribeStatus?.pending.total ?? 0;
+  const showTranscribeButton = transcribeStatus?.available && pendingCount > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 max-w-6xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -291,7 +354,16 @@ export default function ResultsPage() {
           <Link href={`/admin/surveys/${id}`} className="text-blue-600 text-sm hover:underline">
             &larr; Back to survey
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{survey.title} — Results</h1>
+          <div className="flex items-center gap-3 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{survey.title} — Dashboard</h1>
+            <span className="relative flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+              </span>
+              Live
+            </span>
+          </div>
           <p className="text-gray-500 mt-1">
             {participantIds.length} participant{participantIds.length !== 1 ? "s" : ""}
             {participants.length > 0 && (
@@ -305,6 +377,15 @@ export default function ResultsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {showTranscribeButton && (
+            <button
+              onClick={handleTranscribe}
+              disabled={transcribing}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+            >
+              {transcribing ? "Transcribing..." : `Transcribe (${pendingCount})`}
+            </button>
+          )}
           <button
             onClick={() => exportData("csv")}
             className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
@@ -383,21 +464,25 @@ export default function ResultsPage() {
 
                 {/* Audio recordings for this image */}
                 {stat.responses.filter((r) => r.audioFilename).length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 space-y-2">
                     {stat.responses
                       .filter((r) => r.audioFilename)
                       .map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => playAudio(r.audioFilename!)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                            playingAudio === r.audioFilename
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {playingAudio === r.audioFilename ? "Playing..." : `\u25B6 ${participantName(r.participantId)}`}
-                        </button>
+                        <div key={r.id} className="flex items-start gap-2">
+                          <button
+                            onClick={() => playAudio(r.audioFilename!)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                              playingAudio === r.audioFilename
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          >
+                            {playingAudio === r.audioFilename ? "Playing..." : `\u25B6 ${participantName(r.participantId)}`}
+                          </button>
+                          {r.transcription && (
+                            <p className="text-sm italic text-gray-500">&ldquo;{r.transcription}&rdquo;</p>
+                          )}
+                        </div>
                       ))}
                   </div>
                 )}
@@ -537,8 +622,8 @@ export default function ResultsPage() {
                         );
                       }
                       const record = getH2HRecord(rowImg.id, colImg.id);
-                      let winnerId: string | null;
                       let bgColor: string;
+                      let winnerId: string | null;
                       if (record.total === 0) {
                         winnerId = null;
                         bgColor = "bg-gray-50";
@@ -584,7 +669,7 @@ export default function ResultsPage() {
                                         ? "bg-blue-500 text-white"
                                         : "bg-gray-200 text-gray-500 hover:bg-gray-300"
                                     }`}
-                                    title="Play audio"
+                                    title={r.transcription || "Play audio"}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
                                       <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4Z" />
@@ -617,19 +702,23 @@ export default function ResultsPage() {
       {outroRecordings.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mt-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Final Impressions</h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
             {outroRecordings.map((rec) => (
-              <button
-                key={rec.id}
-                onClick={() => playAudio(rec.audioFilename)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                  playingAudio === rec.audioFilename
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {playingAudio === rec.audioFilename ? "Playing..." : `\u25B6 ${participantName(rec.participantId)}`}
-              </button>
+              <div key={rec.id} className="flex items-start gap-2">
+                <button
+                  onClick={() => playAudio(rec.audioFilename)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                    playingAudio === rec.audioFilename
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {playingAudio === rec.audioFilename ? "Playing..." : `\u25B6 ${participantName(rec.participantId)}`}
+                </button>
+                {rec.transcription && (
+                  <p className="text-sm italic text-gray-500">&ldquo;{rec.transcription}&rdquo;</p>
+                )}
+              </div>
             ))}
           </div>
         </div>
