@@ -46,6 +46,10 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.stronglyPrefer": "Strongly prefer",
     "compare.noPreference": "No preference",
     "compare.noPairs": "No pairs to compare.",
+    "compare.breakTitle": "Almost done! Can you do a few more?",
+    "compare.breakContinue": "OK, let's go",
+    "compare.breakTired": "Sorry, I'm tired",
+    "compare.round2Label": "Bonus Round",
 
     // Done
     "done.finalThoughts": "Want to share any final thoughts?",
@@ -99,6 +103,10 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.stronglyPrefer": "Prefiero mucho",
     "compare.noPreference": "Sin preferencia",
     "compare.noPairs": "No hay pares para comparar.",
+    "compare.breakTitle": "¡Casi terminado! ¿Puedes hacer unas más?",
+    "compare.breakContinue": "Vale, vamos",
+    "compare.breakTired": "Lo siento, estoy cansado/a",
+    "compare.round2Label": "Ronda extra",
 
     "done.finalThoughts": "¿Quieres compartir alguna impresión final?",
     "done.submitRecording": "Enviar grabación",
@@ -151,6 +159,10 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.stronglyPrefer": "Prefereixo molt",
     "compare.noPreference": "Sense preferència",
     "compare.noPairs": "No hi ha parells per comparar.",
+    "compare.breakTitle": "Gairebé acabat! Pots fer-ne unes quantes més?",
+    "compare.breakContinue": "D'acord, endavant",
+    "compare.breakTired": "Ho sento, estic cansat/da",
+    "compare.round2Label": "Ronda extra",
 
     "done.finalThoughts": "Vols compartir alguna impressió final?",
     "done.submitRecording": "Enviar gravació",

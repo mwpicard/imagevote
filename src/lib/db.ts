@@ -129,3 +129,6 @@ try {
 try {
   sqlite.exec(`ALTER TABLE pairwise_responses ADD COLUMN score INTEGER`);
 } catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE images ADD COLUMN caption TEXT`);
+} catch { /* column already exists */ }

@@ -11,6 +11,7 @@ interface ImageItem {
   videoFilename: string | null;
   audioFilename: string | null;
   label: string | null;
+  caption: string | null;
   sortOrder: number;
 }
 
@@ -32,6 +33,164 @@ interface Survey {
   code: string;
   createdAt: string;
   images: ImageItem[];
+}
+
+function ImageRow({
+  img,
+  index,
+  onDelete,
+  onUpdate,
+}: {
+  img: ImageItem;
+  index: number;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, caption: string, audio: File | null, removeAudio: boolean) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [caption, setCaption] = useState(img.caption || "");
+  const [newAudio, setNewAudio] = useState<File | null>(null);
+  const [removeAudio, setRemoveAudio] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Sync when parent data changes (after save)
+  useEffect(() => {
+    setCaption(img.caption || "");
+  }, [img.caption]);
+
+  async function handleSave() {
+    setSaving(true);
+    await onUpdate(img.id, caption, newAudio, removeAudio);
+    setNewAudio(null);
+    setRemoveAudio(false);
+    setSaving(false);
+    setEditing(false);
+  }
+
+  function handleCancel() {
+    setCaption(img.caption || "");
+    setNewAudio(null);
+    setRemoveAudio(false);
+    setEditing(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-sm font-semibold text-zinc-500">
+          {index + 1}
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/api/uploads?file=${img.filename}`}
+          alt={img.label || `Image ${index + 1}`}
+          className="h-16 w-16 flex-shrink-0 rounded-lg border border-zinc-200 object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-zinc-900">
+            {img.label || "No label"}
+          </p>
+          {!editing && img.caption && (
+            <p className="mt-0.5 truncate text-sm text-zinc-500 italic">
+              {img.caption}
+            </p>
+          )}
+          <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
+            {img.videoFilename && (
+              <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
+                Video
+              </span>
+            )}
+            {img.audioFilename && !removeAudio && (
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                Audio
+              </span>
+            )}
+            <span>Order: {img.sortOrder}</span>
+          </div>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="flex h-9 items-center rounded-lg border border-zinc-200 px-3 text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+            >
+              Edit
+            </button>
+          )}
+          <button
+            onClick={() => onDelete(img.id)}
+            className="flex h-9 items-center rounded-lg border border-zinc-200 px-3 text-sm text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {editing && (
+        <div className="mt-3 space-y-3 border-t border-zinc-100 pt-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Caption</label>
+            <input
+              type="text"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Caption shown to participants during evaluation"
+              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Audio (auto-plays during evaluation)</label>
+            {img.audioFilename && !removeAudio && !newAudio && (
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs text-zinc-500">Current audio attached</span>
+                <button
+                  onClick={() => setRemoveAudio(true)}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            {removeAudio && !newAudio && (
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs text-red-500">Audio will be removed</span>
+                <button
+                  onClick={() => setRemoveAudio(false)}
+                  className="text-xs text-zinc-500 hover:text-zinc-700"
+                >
+                  Undo
+                </button>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={(e) => {
+                setNewAudio(e.target.files?.[0] || null);
+                if (e.target.files?.[0]) setRemoveAudio(false);
+              }}
+              className="text-sm text-zinc-500 file:mr-2 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex h-9 items-center rounded-lg bg-zinc-800 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex h-9 items-center rounded-lg border border-zinc-200 px-4 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EditSurveyPage() {
@@ -222,6 +381,22 @@ export default function EditSurveyPage() {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageId }),
+    });
+    if (res.ok) {
+      await fetchSession();
+    }
+  }
+
+  async function handleUpdateImage(imageId: string, caption: string, audio: File | null, removeAudio: boolean) {
+    const formData = new FormData();
+    formData.append("imageId", imageId);
+    formData.append("caption", caption);
+    if (audio) formData.append("audio", audio);
+    if (removeAudio) formData.append("removeAudio", "true");
+
+    const res = await fetch(`/api/surveys/${id}/images`, {
+      method: "PATCH",
+      body: formData,
     });
     if (res.ok) {
       await fetchSession();
@@ -696,44 +871,13 @@ export default function EditSurveyPage() {
           {session.images.length > 0 && (
             <div className="mt-6 space-y-3">
               {session.images.map((img, index) => (
-                <div
+                <ImageRow
                   key={img.id}
-                  className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4"
-                >
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-sm font-semibold text-zinc-500">
-                    {index + 1}
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/uploads?file=${img.filename}`}
-                    alt={img.label || `Image ${index + 1}`}
-                    className="h-16 w-16 flex-shrink-0 rounded-lg border border-zinc-200 object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-zinc-900">
-                      {img.label || "No label"}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
-                      {img.videoFilename && (
-                        <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
-                          Video
-                        </span>
-                      )}
-                      {img.audioFilename && (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                          Audio
-                        </span>
-                      )}
-                      <span>Order: {img.sortOrder}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteImage(img.id)}
-                    className="flex h-9 flex-shrink-0 items-center rounded-lg border border-zinc-200 px-3 text-sm text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
-                </div>
+                  img={img}
+                  index={index}
+                  onDelete={handleDeleteImage}
+                  onUpdate={handleUpdateImage}
+                />
               ))}
             </div>
           )}

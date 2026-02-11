@@ -35,19 +35,22 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-function generatePairs(images: ImageItem[]): Pair[] {
-  const pairs: Pair[] = [];
+function generatePairs(images: ImageItem[]): { round1: Pair[]; round2: Pair[] } {
+  const round1: Pair[] = [];
+  const round2: Pair[] = [];
   for (let i = 0; i < images.length; i++) {
     for (let j = i + 1; j < images.length; j++) {
-      // Randomize left/right per pair
+      // Randomize left/right per pair; round2 gets the opposite arrangement
       if (Math.random() < 0.5) {
-        pairs.push({ imageA: images[i], imageB: images[j] });
+        round1.push({ imageA: images[i], imageB: images[j] });
+        round2.push({ imageA: images[j], imageB: images[i] });
       } else {
-        pairs.push({ imageA: images[j], imageB: images[i] });
+        round1.push({ imageA: images[j], imageB: images[i] });
+        round2.push({ imageA: images[i], imageB: images[j] });
       }
     }
   }
-  return shuffleArray(pairs);
+  return { round1: shuffleArray(round1), round2: shuffleArray(round2) };
 }
 
 export default function ComparePage() {
@@ -56,6 +59,8 @@ export default function ComparePage() {
 
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [pairs, setPairs] = useState<Pair[]>([]);
+  const [round2Pairs, setRound2Pairs] = useState<Pair[]>([]);
+  const [phase, setPhase] = useState<"round1" | "break" | "round2">("round1");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sliderValue, setSliderValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -75,7 +80,9 @@ export default function ComparePage() {
         }
         const data: Survey = await res.json();
         setSurvey(data);
-        setPairs(generatePairs(data.images));
+        const { round1, round2 } = generatePairs(data.images);
+        setPairs(round1);
+        setRound2Pairs(round2);
       } catch {
         setError("load_error");
       } finally {
@@ -148,7 +155,11 @@ export default function ComparePage() {
       clearAudio();
 
       if (currentIndex + 1 >= pairs.length) {
-        router.push(`/s/${params.code}/done`);
+        if (phase === "round1") {
+          setPhase("break");
+        } else {
+          router.push(`/s/${params.code}/done`);
+        }
       } else {
         setCurrentIndex((prev) => prev + 1);
         setSliderValue(0);
@@ -170,6 +181,7 @@ export default function ComparePage() {
     participantId,
     currentIndex,
     pairs.length,
+    phase,
     router,
     params.code,
   ]);
@@ -190,7 +202,7 @@ export default function ComparePage() {
     );
   }
 
-  if (error || !survey || !currentPair) {
+  if (error || !survey || (!currentPair && phase !== "break")) {
     const errorMsg = error === "not_found"
       ? t(lang, "intro.sessionNotFound")
       : error === "load_error"
@@ -212,6 +224,38 @@ export default function ComparePage() {
     );
   }
 
+  if (phase === "break") {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-6 dark:bg-zinc-950">
+        <div className="w-full max-w-sm text-center">
+          <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
+            {t(lang, "compare.breakTitle")}
+          </h2>
+          <div className="mt-8 flex flex-col gap-3">
+            <button
+              onClick={() => {
+                setPairs(round2Pairs);
+                setCurrentIndex(0);
+                setSliderValue(0);
+                clearAudio();
+                setPhase("round2");
+              }}
+              className="h-14 w-full rounded-2xl bg-zinc-900 text-lg font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+            >
+              {t(lang, "compare.breakContinue")}
+            </button>
+            <button
+              onClick={() => router.push(`/s/${params.code}/done`)}
+              className="h-14 w-full rounded-2xl bg-zinc-100 text-lg font-semibold text-zinc-500 transition-colors hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:active:bg-zinc-600"
+            >
+              {t(lang, "compare.breakTired")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const preferA = sliderValue < 0;
   const preferB = sliderValue > 0;
 
@@ -220,7 +264,7 @@ export default function ComparePage() {
       {/* Phase label + Progress */}
       <div className="flex flex-col items-center px-4 pt-4 pb-2">
         <span className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-          {t(lang, "compare.phaseLabel")}
+          {phase === "round2" ? t(lang, "compare.round2Label") : t(lang, "compare.phaseLabel")}
         </span>
         <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
           {t(lang, "compare.pairNofM", { n: currentIndex + 1, total: pairs.length })}

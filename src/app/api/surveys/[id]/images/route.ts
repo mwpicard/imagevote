@@ -106,6 +106,69 @@ export async function DELETE(
   return NextResponse.json({ success: true });
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  await params;
+  ensureUploadsDir();
+
+  const formData = await req.formData();
+  const imageId = formData.get("imageId") as string | null;
+  if (!imageId) {
+    return NextResponse.json({ error: "imageId is required" }, { status: 400 });
+  }
+
+  const existing = await db.query.images.findFirst({
+    where: (img, { eq: e }) => e(img.id, imageId),
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Image not found" }, { status: 404 });
+  }
+
+  const updates: Record<string, string | null> = {};
+
+  // Caption (allow setting to empty string to clear)
+  if (formData.has("caption")) {
+    const caption = formData.get("caption") as string;
+    updates.caption = caption || null;
+  }
+
+  // Audio file replacement
+  const audio = formData.get("audio") as File | null;
+  if (audio) {
+    // Delete old audio file if present
+    if (existing.audioFilename) {
+      const oldPath = path.join(uploadsDir, existing.audioFilename);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    const audExt = path.extname(audio.name) || ".mp3";
+    const audioFilename = `${imageId}-audio${audExt}`;
+    const audioBuffer = Buffer.from(await audio.arrayBuffer());
+    fs.writeFileSync(path.join(uploadsDir, audioFilename), audioBuffer);
+    updates.audioFilename = audioFilename;
+  }
+
+  // Remove audio if explicitly requested
+  if (formData.get("removeAudio") === "true" && !audio) {
+    if (existing.audioFilename) {
+      const oldPath = path.join(uploadsDir, existing.audioFilename);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    updates.audioFilename = null;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db.update(images).set(updates).where(eq(images.id, imageId));
+  }
+
+  const updated = await db.query.images.findFirst({
+    where: (img, { eq: e }) => e(img.id, imageId),
+  });
+
+  return NextResponse.json(updated);
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

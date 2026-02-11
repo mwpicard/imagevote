@@ -11,6 +11,7 @@ interface ImageItem {
   videoFilename: string | null;
   audioFilename: string | null;
   label: string | null;
+  caption: string | null;
   sortOrder: number;
 }
 
@@ -283,12 +284,17 @@ export default function EvaluatePage() {
       </div>
 
       {/* Image */}
-      <div className="flex flex-1 items-center justify-center px-4 pt-4 pb-2">
+      <div className="flex flex-1 flex-col items-center justify-center px-4 pt-4 pb-2">
         <img
           src={`/api/uploads?file=${encodeURIComponent(currentImage.filename)}`}
           alt={currentImage.label || `Image ${currentIndex + 1}`}
           className="evaluate-image max-h-[55dvh] w-full rounded-xl object-contain"
         />
+        {currentImage.caption && (
+          <p className="mt-2 text-center text-base text-zinc-600 dark:text-zinc-400">
+            {currentImage.caption}
+          </p>
+        )}
       </div>
 
       {/* Controls area */}
