@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { LOCALES, type Locale } from "@/lib/i18n";
+import { useAudioRecorder } from "@/components/useAudioRecorder";
 
 interface ImageItem {
   id: string;
@@ -48,19 +49,39 @@ function ImageRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [caption, setCaption] = useState(img.caption || "");
-  const [newAudio, setNewAudio] = useState<File | null>(null);
   const [removeAudio, setRemoveAudio] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  const { isRecording, audioBlob, startRecording, stopRecording, clearAudio } =
+    useAudioRecorder();
 
   // Sync when parent data changes (after save)
   useEffect(() => {
     setCaption(img.caption || "");
   }, [img.caption]);
 
+  // Clean up audio element on unmount
+  useEffect(() => {
+    return () => {
+      if (audioElRef.current) {
+        audioElRef.current.pause();
+        audioElRef.current = null;
+      }
+    };
+  }, []);
+
+  function blobToFile(blob: Blob): File {
+    const ext = blob.type.includes("mp4") ? ".mp4" : ".webm";
+    return new File([blob], `recording${ext}`, { type: blob.type });
+  }
+
   async function handleSave() {
     setSaving(true);
-    await onUpdate(img.id, caption, newAudio, removeAudio);
-    setNewAudio(null);
+    const file = audioBlob && audioBlob.size > 0 ? blobToFile(audioBlob) : null;
+    await onUpdate(img.id, caption, file, removeAudio);
+    clearAudio();
     setRemoveAudio(false);
     setSaving(false);
     setEditing(false);
@@ -68,10 +89,46 @@ function ImageRow({
 
   function handleCancel() {
     setCaption(img.caption || "");
-    setNewAudio(null);
+    clearAudio();
     setRemoveAudio(false);
     setEditing(false);
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current = null;
+    }
+    setPlaying(false);
   }
+
+  function handleReview(src: string) {
+    if (playing && audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current = null;
+      setPlaying(false);
+      return;
+    }
+    const audio = new Audio(src);
+    audioElRef.current = audio;
+    setPlaying(true);
+    audio.onended = () => {
+      audioElRef.current = null;
+      setPlaying(false);
+    };
+    audio.play().catch(() => setPlaying(false));
+  }
+
+  function handleDeleteRecording() {
+    clearAudio();
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current = null;
+    }
+    setPlaying(false);
+  }
+
+  // Has a new recording ready (not yet saved)
+  const hasNewRecording = audioBlob && audioBlob.size > 0;
+  // Has an existing saved audio on the server
+  const hasExistingAudio = img.audioFilename && !removeAudio;
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -100,7 +157,7 @@ function ImageRow({
                 Video
               </span>
             )}
-            {img.audioFilename && !removeAudio && (
+            {img.audioFilename && (
               <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                 Audio
               </span>
@@ -140,20 +197,42 @@ function ImageRow({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">Audio (auto-plays during evaluation)</label>
-            {img.audioFilename && !removeAudio && !newAudio && (
+
+            {/* Existing saved audio */}
+            {hasExistingAudio && !hasNewRecording && (
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Current audio attached</span>
+                <button
+                  onClick={() =>
+                    handleReview(`/api/uploads?file=${encodeURIComponent(img.audioFilename!)}`)
+                  }
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                >
+                  {playing ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><rect x="5" y="4" width="3" height="12" rx="1" /><rect x="12" y="4" width="3" height="12" rx="1" /></svg>
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.344-5.891a1.5 1.5 0 0 0 0-2.538L6.3 2.841Z" /></svg>
+                      Review
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={() => setRemoveAudio(true)}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-colors hover:border-red-200 hover:bg-red-50"
                 >
-                  Remove
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022 1.005 11.36A2.75 2.75 0 0 0 7.76 20h4.48a2.75 2.75 0 0 0 2.742-2.489l1.005-11.36.149.022a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clipRule="evenodd" /></svg>
+                  Delete
                 </button>
               </div>
             )}
-            {removeAudio && !newAudio && (
+
+            {/* Audio removed notice */}
+            {removeAudio && !hasNewRecording && (
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-xs text-red-500">Audio will be removed</span>
+                <span className="text-xs text-red-500">Audio will be removed on save</span>
                 <button
                   onClick={() => setRemoveAudio(false)}
                   className="text-xs text-zinc-500 hover:text-zinc-700"
@@ -162,27 +241,75 @@ function ImageRow({
                 </button>
               </div>
             )}
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={(e) => {
-                setNewAudio(e.target.files?.[0] || null);
-                if (e.target.files?.[0]) setRemoveAudio(false);
-              }}
-              className="text-sm text-zinc-500 file:mr-2 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-            />
+
+            {/* New recording preview */}
+            {hasNewRecording && (
+              <div className="mb-2 flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                  New recording ready
+                </span>
+                <button
+                  onClick={() => handleReview(URL.createObjectURL(audioBlob!))}
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                >
+                  {playing ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><rect x="5" y="4" width="3" height="12" rx="1" /><rect x="12" y="4" width="3" height="12" rx="1" /></svg>
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.344-5.891a1.5 1.5 0 0 0 0-2.538L6.3 2.841Z" /></svg>
+                      Review
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleDeleteRecording}
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-colors hover:border-red-200 hover:bg-red-50"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022 1.005 11.36A2.75 2.75 0 0 0 7.76 20h4.48a2.75 2.75 0 0 0 2.742-2.489l1.005-11.36.149.022a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clipRule="evenodd" /></svg>
+                  Redo
+                </button>
+              </div>
+            )}
+
+            {/* Record button */}
+            {!hasNewRecording && (
+              <button
+                onClick={isRecording ? () => stopRecording() : startRecording}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isRecording
+                    ? "bg-red-500 text-white hover:bg-red-600"
+                    : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                }`}
+              >
+                {isRecording ? (
+                  <>
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                    Stop Recording
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M7 4a3 3 0 0 1 6 0v6a3 3 0 1 1-6 0V4Z" /><path d="M5.5 9.643a.75.75 0 0 0-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-1.5v-1.546A6.001 6.001 0 0 0 16 10v-.357a.75.75 0 0 0-1.5 0V10a4.5 4.5 0 0 1-9 0v-.357Z" /></svg>
+                    Record
+                  </>
+                )}
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || isRecording}
               className="flex h-9 items-center rounded-lg bg-zinc-800 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save"}
             </button>
             <button
               onClick={handleCancel}
-              className="flex h-9 items-center rounded-lg border border-zinc-200 px-4 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+              disabled={isRecording}
+              className="flex h-9 items-center rounded-lg border border-zinc-200 px-4 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50"
             >
               Cancel
             </button>
