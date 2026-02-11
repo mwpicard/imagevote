@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { useAudioRecorder } from "@/components/useAudioRecorder";
@@ -322,6 +322,7 @@ function ImageRow({
 
 export default function EditSurveyPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
 
   const [session, setSession] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
@@ -527,6 +528,15 @@ export default function EditSurveyPage() {
     });
     if (res.ok) {
       await fetchSession();
+    }
+  }
+
+  async function handleDeleteSurvey() {
+    if (!confirm("Delete this survey and all its data? This cannot be undone.")) return;
+    const res = await fetch(`/api/surveys/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      const projectId = session?.projectId;
+      router.push(projectId ? `/admin/projects/${projectId}` : "/admin/projects");
     }
   }
 
@@ -1035,6 +1045,20 @@ export default function EditSurveyPage() {
             <p className="mt-2 text-sm text-blue-700">
               Survey code: <span className="font-mono font-bold">{session.code}</span>
             </p>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5">
+            <h2 className="text-sm font-semibold text-red-900">Danger zone</h2>
+            <p className="mt-1 text-sm text-red-700">
+              Permanently delete this survey, all images, responses, and recordings.
+            </p>
+            <button
+              onClick={handleDeleteSurvey}
+              className="mt-3 h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700"
+            >
+              Delete survey
+            </button>
           </div>
         </div>
       </div>
