@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAudioRecorder } from "@/components/useAudioRecorder";
 import { t, type Locale } from "@/lib/i18n";
@@ -10,6 +10,8 @@ interface Survey {
   outroHeading: string;
   outroBody: string;
   outroMediaFilename: string | null;
+  outroAudioFilename: string | null;
+  narrationTiming: string;
   language: string;
   code: string;
   images: { id: string; filename: string; label: string | null }[];
@@ -34,6 +36,8 @@ export default function DonePage() {
   const [email, setEmail] = useState("");
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const narrationRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { isRecording, audioBlob, startRecording, stopRecording } =
     useAudioRecorder();
@@ -92,9 +96,50 @@ export default function DonePage() {
       : null) || survey?.language || "en"
   ) as Locale;
 
+  const audioConsent =
+    typeof window !== "undefined"
+      ? localStorage.getItem(`imagevote-audio-consent-${params.code}`) === "true"
+      : false;
+
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  // Auto-play outro narration audio
+  useEffect(() => {
+    if (!survey?.outroAudioFilename) return;
+
+    const audioUrl = `/api/uploads?file=${encodeURIComponent(survey.outroAudioFilename)}`;
+    const audio = new Audio(audioUrl);
+    narrationRef.current = audio;
+
+    const hasVideo = !!survey.outroMediaFilename && /\.(mp4|webm|mov)$/i.test(survey.outroMediaFilename);
+    const timing = survey.narrationTiming;
+
+    if (timing === "after" && hasVideo && videoRef.current) {
+      const video = videoRef.current;
+      const onEnded = () => {
+        audio.play().catch(() => {});
+        video.removeEventListener("ended", onEnded);
+      };
+      video.loop = false;
+      video.addEventListener("ended", onEnded);
+    } else if (timing === "after" && !hasVideo) {
+      const timer = setTimeout(() => audio.play().catch(() => {}), 1500);
+      return () => {
+        clearTimeout(timer);
+        audio.pause();
+        narrationRef.current = null;
+      };
+    } else {
+      audio.play().catch(() => {});
+    }
+
+    return () => {
+      audio.pause();
+      narrationRef.current = null;
+    };
+  }, [survey]);
 
   async function handleMicToggle() {
     if (isRecording) {
@@ -209,9 +254,10 @@ export default function DonePage() {
       {hasMedia && (
         isOutroVideo ? (
           <video
+            ref={videoRef}
             src={`/api/uploads?file=${encodeURIComponent(survey.outroMediaFilename!)}`}
             autoPlay
-            loop
+            loop={!(survey.narrationTiming === "after" && survey.outroAudioFilename)}
             muted
             playsInline
             className="absolute inset-0 h-full w-full object-cover"
@@ -317,7 +363,7 @@ export default function DonePage() {
         )}
 
         {/* Record final thoughts */}
-        {!submitted && (
+        {!submitted && audioConsent && (
           <div className="mt-10 flex flex-col items-center gap-4">
             <p className={`text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
               {t(lang, "done.finalThoughts")}

@@ -19,6 +19,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "intro.lastName": "Last name (optional)",
     "intro.age": "Age (optional)",
     "intro.firstNameRequired": "Please enter your first name",
+    "intro.audioConsent": "Is it ok to record audio? We'll use the transcript to better assess your feedback.",
+    "intro.audioYes": "Yes",
+    "intro.audioNo": "No",
 
     // Evaluate
     "eval.phaseLabel": "Phase 1 of 2 — Rate",
@@ -78,6 +81,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "intro.lastName": "Apellido (opcional)",
     "intro.age": "Edad (opcional)",
     "intro.firstNameRequired": "Por favor, introduce tu nombre",
+    "intro.audioConsent": "¿Está bien grabar audio? Usaremos la transcripción para evaluar mejor tus comentarios.",
+    "intro.audioYes": "Sí",
+    "intro.audioNo": "No",
 
     "eval.phaseLabel": "Fase 1 de 2 — Valorar",
     "eval.nOfM": "{n} de {total}",
@@ -134,6 +140,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "intro.lastName": "Cognom (opcional)",
     "intro.age": "Edat (opcional)",
     "intro.firstNameRequired": "Si us plau, introdueix el teu nom",
+    "intro.audioConsent": "Està bé gravar àudio? Utilitzarem la transcripció per avaluar millor els teus comentaris.",
+    "intro.audioYes": "Sí",
+    "intro.audioNo": "No",
 
     "eval.phaseLabel": "Fase 1 de 2 — Valorar",
     "eval.nOfM": "{n} de {total}",

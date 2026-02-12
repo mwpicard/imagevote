@@ -40,6 +40,7 @@ export async function PUT(
     language: body.language,
     randomizeOrder: body.randomizeOrder,
     autoRecord: body.autoRecord,
+    narrationTiming: body.narrationTiming,
   };
   if ("projectId" in body) {
     updates.projectId = body.projectId;
@@ -64,12 +65,25 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
+  // Delete intro/outro audio files
+  const surveyData = await db.query.surveys.findFirst({
+    where: (s, { eq }) => eq(s.id, id),
+  });
+  const uploadsDir = path.join(process.cwd(), "data", "uploads");
+  if (surveyData) {
+    for (const fname of [surveyData.introMediaFilename, surveyData.outroMediaFilename, surveyData.introAudioFilename, surveyData.outroAudioFilename]) {
+      if (fname) {
+        const p = path.join(uploadsDir, fname);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+    }
+  }
+
   // Delete associated files
   const surveyImages = await db.query.images.findMany({
     where: (img, { eq }) => eq(img.surveyId, id),
   });
 
-  const uploadsDir = path.join(process.cwd(), "data", "uploads");
   for (const img of surveyImages) {
     const imgPath = path.join(uploadsDir, img.filename);
     if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);

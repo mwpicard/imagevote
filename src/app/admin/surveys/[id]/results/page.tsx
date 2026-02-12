@@ -89,6 +89,7 @@ export default function ResultsPage() {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [transcribeStatus, setTranscribeStatus] = useState<TranscribeStatus | null>(null);
   const [transcribing, setTranscribing] = useState(false);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [showAlgorithm, setShowAlgorithm] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -145,9 +146,18 @@ export default function ResultsPage() {
 
   async function handleTranscribe() {
     setTranscribing(true);
+    setTranscribeError(null);
     try {
-      await fetch(`/api/surveys/${id}/transcribe`, { method: "POST" });
-      fetchData();
+      const res = await fetch(`/api/surveys/${id}/transcribe`, { method: "POST" });
+      if (res.status === 503) {
+        setTranscribeError("OpenAI API key not configured. Add OPENAI_API_KEY to .env.local and restart.");
+      } else if (!res.ok) {
+        setTranscribeError("Transcription failed. Please try again.");
+      } else {
+        fetchData();
+      }
+    } catch {
+      setTranscribeError("Transcription failed. Please try again.");
     } finally {
       setTranscribing(false);
     }
@@ -160,6 +170,55 @@ export default function ResultsPage() {
   const isGuidedTour = survey.votingMode === "guided_tour";
   const participantIds = [...new Set(responses.map((r) => r.participantId))];
   const participantMap = new Map(participants.map((p) => [p.id, p]));
+
+  // Completion stats
+  const numImages = survey.images.length;
+  const expectedPairsR1 = (numImages * (numImages - 1)) / 2;
+  const expectedPairsR2 = numImages * (numImages - 1);
+
+  const completionStats = (() => {
+    const started = participants.length;
+    let completed = 0;
+    let bonusDone = 0;
+    let tired = 0;
+    let inProgress = 0;
+
+    for (const p of participants) {
+      const individualCount = responses.filter((r) => r.participantId === p.id).length;
+      const pairwiseCount = pairwiseResponses.filter((r) => r.participantId === p.id).length;
+
+      if (isGuidedTour) {
+        if (pairwiseCount >= expectedPairsR2) {
+          completed++;
+          bonusDone++;
+        } else if (pairwiseCount >= expectedPairsR1) {
+          // Could be "tired" or still doing round 2
+          if (pairwiseCount === expectedPairsR1) {
+            // Exactly round 1 — either tired or hasn't started round 2 yet
+            completed++;
+            tired++;
+          } else {
+            // Between round 1 and round 2 — still in progress on round 2
+            inProgress++;
+          }
+        } else if (individualCount > 0 || pairwiseCount > 0) {
+          inProgress++;
+        } else {
+          inProgress++;
+        }
+      } else {
+        if (individualCount >= numImages) {
+          completed++;
+        } else if (individualCount > 0) {
+          inProgress++;
+        } else {
+          inProgress++;
+        }
+      }
+    }
+
+    return { started, completed, bonusDone, tired, inProgress };
+  })();
 
   function participantName(pid: string) {
     const p = participantMap.get(pid);
@@ -395,7 +454,7 @@ export default function ResultsPage() {
   }
 
   const pendingCount = transcribeStatus?.pending.total ?? 0;
-  const showTranscribeButton = transcribeStatus?.available && pendingCount > 0;
+  const showTranscribeButton = pendingCount > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 max-w-6xl mx-auto">
@@ -428,13 +487,18 @@ export default function ResultsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {showTranscribeButton && (
-            <button
-              onClick={handleTranscribe}
-              disabled={transcribing}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
-            >
-              {transcribing ? "Transcribing..." : `Transcribe (${pendingCount})`}
-            </button>
+            <div className="flex flex-col items-start gap-1">
+              <button
+                onClick={handleTranscribe}
+                disabled={transcribing}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+              >
+                {transcribing ? "Transcribing..." : `Transcribe (${pendingCount})`}
+              </button>
+              {transcribeError && (
+                <p className="text-xs text-red-600">{transcribeError}</p>
+              )}
+            </div>
           )}
           <button
             onClick={() => exportData("csv")}
@@ -450,6 +514,58 @@ export default function ResultsPage() {
           </button>
         </div>
       </div>
+
+      {/* Participation stats */}
+      {participants.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">Participation</h2>
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <div>
+              <span className="text-2xl font-bold text-gray-900">{completionStats.completed}</span>
+              <span className="text-gray-400"> / {completionStats.started}</span>
+              <p className="text-gray-500 mt-0.5">completed</p>
+            </div>
+            {completionStats.inProgress > 0 && (
+              <div>
+                <span className="text-2xl font-bold text-amber-600">{completionStats.inProgress}</span>
+                <p className="text-gray-500 mt-0.5">in progress</p>
+              </div>
+            )}
+            {isGuidedTour && completionStats.completed > 0 && (
+              <>
+                <div>
+                  <span className="text-2xl font-bold text-green-600">{completionStats.bonusDone}</span>
+                  <p className="text-gray-500 mt-0.5">did bonus round</p>
+                </div>
+                {completionStats.tired > 0 && (
+                  <div>
+                    <span className="text-2xl font-bold text-orange-500">{completionStats.tired}</span>
+                    <p className="text-gray-500 mt-0.5">skipped bonus</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {/* Progress bar */}
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-gray-100">
+            {completionStats.completed > 0 && (
+              <div
+                className="bg-green-500 transition-all duration-500"
+                style={{ width: `${(completionStats.completed / completionStats.started) * 100}%` }}
+              />
+            )}
+            {completionStats.inProgress > 0 && (
+              <div
+                className="bg-amber-400 transition-all duration-500"
+                style={{ width: `${(completionStats.inProgress / completionStats.started) * 100}%` }}
+              />
+            )}
+          </div>
+          <p className="mt-1.5 text-xs text-gray-400">
+            {Math.round((completionStats.completed / completionStats.started) * 100)}% completion rate
+          </p>
+        </div>
+      )}
 
       {/* Share section */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">

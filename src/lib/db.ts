@@ -34,6 +34,9 @@ sqlite.exec(`
     outro_body TEXT NOT NULL DEFAULT 'Your feedback has been recorded.',
     intro_media_filename TEXT,
     outro_media_filename TEXT,
+    intro_audio_filename TEXT,
+    outro_audio_filename TEXT,
+    narration_timing TEXT NOT NULL DEFAULT 'simultaneous',
     voting_mode TEXT NOT NULL DEFAULT 'binary',
     language TEXT NOT NULL DEFAULT 'en',
     randomize_order INTEGER NOT NULL DEFAULT 0,
@@ -131,4 +134,16 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE images ADD COLUMN caption TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE participants ADD COLUMN last_seen_at TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN intro_audio_filename TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_audio_filename TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN narration_timing TEXT NOT NULL DEFAULT 'simultaneous'`);
 } catch { /* column already exists */ }

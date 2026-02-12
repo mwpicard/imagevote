@@ -96,19 +96,24 @@ export default function EvaluatePage() {
       : null) || survey?.language || "en"
   ) as Locale;
 
+  const audioConsent =
+    typeof window !== "undefined"
+      ? localStorage.getItem(`imagevote-audio-consent-${params.code}`) === "true"
+      : false;
+
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Pre-request mic permission when autoRecord is enabled
+  // Pre-request mic permission when autoRecord is enabled and consent given
   useEffect(() => {
-    if (survey?.autoRecord) {
+    if (survey?.autoRecord && audioConsent) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => stream.getTracks().forEach((t) => t.stop()))
         .catch(() => {});
     }
-  }, [survey?.autoRecord]);
+  }, [survey?.autoRecord, audioConsent]);
 
   // Auto-play image audio + auto-record sequence
   useEffect(() => {
@@ -136,8 +141,8 @@ export default function EvaluatePage() {
         setPlayingAudio(false);
       }
 
-      // Step 2: Auto-start recording if autoRecord is on
-      if (survey!.autoRecord && !cancelled) {
+      // Step 2: Auto-start recording if autoRecord is on and consent given
+      if (survey!.autoRecord && audioConsent && !cancelled) {
         await startRecording();
       }
     }
@@ -154,7 +159,7 @@ export default function EvaluatePage() {
       setPlayingAudio(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, survey?.autoRecord]);
+  }, [currentIndex, survey?.autoRecord, audioConsent]);
 
   const handleNext = useCallback(async () => {
     if (!survey || !currentImage || vote === null) return;
@@ -382,65 +387,67 @@ export default function EvaluatePage() {
         </div>
 
         {/* Audio recording */}
-        <div className="flex flex-col items-center gap-2">
-          {survey.autoRecord ? (
-            <>
-              {playingAudio && (
-                <span className="text-xs font-medium text-blue-500">
-                  {t(lang, "eval.playingAudio")}
-                </span>
-              )}
-              {isRecording && (
-                <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-                  {t(lang, "eval.recording")}
-                </span>
-              )}
-              {!playingAudio && !isRecording && audioBlob && audioBlob.size > 0 && (
-                <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-                  {t(lang, "eval.audioRecorded")}
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              {playingAudio && (
-                <span className="text-xs font-medium text-blue-500">
-                  {t(lang, "eval.playingAudio")}
-                </span>
-              )}
-              <button
-                onClick={handleMicToggle}
-                className={`flex h-12 w-12 items-center justify-center rounded-full transition-all ${
-                  isRecording
-                    ? "animate-pulse bg-red-500 text-white"
-                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
-                }`}
-                aria-label={isRecording ? "Stop recording" : "Start recording"}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="h-5 w-5"
+        {audioConsent && (
+          <div className="flex flex-col items-center gap-2">
+            {survey.autoRecord ? (
+              <>
+                {playingAudio && (
+                  <span className="text-xs font-medium text-blue-500">
+                    {t(lang, "eval.playingAudio")}
+                  </span>
+                )}
+                {isRecording && (
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                    {t(lang, "eval.recording")}
+                  </span>
+                )}
+                {!playingAudio && !isRecording && audioBlob && audioBlob.size > 0 && (
+                  <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    {t(lang, "eval.audioRecorded")}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {playingAudio && (
+                  <span className="text-xs font-medium text-blue-500">
+                    {t(lang, "eval.playingAudio")}
+                  </span>
+                )}
+                <button
+                  onClick={handleMicToggle}
+                  className={`flex h-12 w-12 items-center justify-center rounded-full transition-all ${
+                    isRecording
+                      ? "animate-pulse bg-red-500 text-white"
+                      : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  }`}
+                  aria-label={isRecording ? "Stop recording" : "Start recording"}
                 >
-                  <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4Z" />
-                  <path d="M6 11a1 1 0 1 0-2 0 8 8 0 0 0 7 7.93V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.07A8 8 0 0 0 20 11a1 1 0 1 0-2 0 6 6 0 0 1-12 0Z" />
-                </svg>
-              </button>
-              {isRecording && (
-                <span className="text-xs font-medium text-red-500">
-                  {t(lang, "eval.recording")}
-                </span>
-              )}
-              {!isRecording && audioBlob && audioBlob.size > 0 && (
-                <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-                  {t(lang, "eval.audioRecorded")}
-                </span>
-              )}
-            </>
-          )}
-        </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="h-5 w-5"
+                  >
+                    <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4Z" />
+                    <path d="M6 11a1 1 0 1 0-2 0 8 8 0 0 0 7 7.93V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.07A8 8 0 0 0 20 11a1 1 0 1 0-2 0 6 6 0 0 1-12 0Z" />
+                  </svg>
+                </button>
+                {isRecording && (
+                  <span className="text-xs font-medium text-red-500">
+                    {t(lang, "eval.recording")}
+                  </span>
+                )}
+                {!isRecording && audioBlob && audioBlob.size > 0 && (
+                  <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    {t(lang, "eval.audioRecorded")}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Next button */}
         <button

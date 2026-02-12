@@ -22,6 +22,9 @@ export const surveys = sqliteTable("sessions", {
   outroBody: text("outro_body").notNull().default("Your feedback has been recorded."),
   introMediaFilename: text("intro_media_filename"),
   outroMediaFilename: text("outro_media_filename"),
+  introAudioFilename: text("intro_audio_filename"),
+  outroAudioFilename: text("outro_audio_filename"),
+  narrationTiming: text("narration_timing").notNull().default("simultaneous"),
   votingMode: text("voting_mode", { enum: ["binary", "scale", "pairwise", "guided_tour"] }).notNull().default("binary"),
   language: text("language").notNull().default("en"),
   randomizeOrder: integer("randomize_order", { mode: "boolean" }).notNull().default(false),
@@ -112,6 +115,7 @@ export const participants = sqliteTable("participants", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name"),
   age: integer("age"),
+  lastSeenAt: text("last_seen_at"),
   createdAt: text("created_at").notNull(),
 });
 

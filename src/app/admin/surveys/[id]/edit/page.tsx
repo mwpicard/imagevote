@@ -23,9 +23,12 @@ interface Survey {
   introHeading: string;
   introBody: string;
   introMediaFilename: string | null;
+  introAudioFilename: string | null;
   outroHeading: string;
   outroBody: string;
   outroMediaFilename: string | null;
+  outroAudioFilename: string | null;
+  narrationTiming: string;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   language: string;
   randomizeOrder: boolean;
@@ -340,6 +343,15 @@ export default function EditSurveyPage() {
   const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
   const [autoRecord, setAutoRecord] = useState(false);
+  const [narrationTiming, setNarrationTiming] = useState("simultaneous");
+
+  // Intro/outro audio narration recorders
+  const introRecorder = useAudioRecorder();
+  const outroRecorder = useAudioRecorder();
+  const [introAudioPlaying, setIntroAudioPlaying] = useState(false);
+  const [outroAudioPlaying, setOutroAudioPlaying] = useState(false);
+  const introAudioElRef = useRef<HTMLAudioElement | null>(null);
+  const outroAudioElRef = useRef<HTMLAudioElement | null>(null);
 
   // Image upload fields
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -368,6 +380,7 @@ export default function EditSurveyPage() {
         setLanguage((data.language || "en") as Locale);
         setRandomizeOrder(data.randomizeOrder);
         setAutoRecord(data.autoRecord ?? false);
+        setNarrationTiming(data.narrationTiming || "simultaneous");
       }
     } finally {
       setLoading(false);
@@ -397,6 +410,7 @@ export default function EditSurveyPage() {
           language,
           randomizeOrder,
           autoRecord,
+          narrationTiming,
         }),
       });
       if (res.ok) {
@@ -446,7 +460,7 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleMediaUpload(target: "intro" | "outro", file: File) {
+  async function handleMediaUpload(target: "intro" | "outro" | "intro-audio" | "outro-audio", file: File) {
     const formData = new FormData();
     formData.append("target", target);
     formData.append("file", file);
@@ -459,7 +473,7 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleMediaDelete(target: "intro" | "outro") {
+  async function handleMediaDelete(target: "intro" | "outro" | "intro-audio" | "outro-audio") {
     const res = await fetch(`/api/surveys/${id}/media`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -538,6 +552,36 @@ export default function EditSurveyPage() {
       const projectId = session?.projectId;
       router.push(projectId ? `/admin/projects/${projectId}` : "/admin/projects");
     }
+  }
+
+  function handleNarrationReview(
+    src: string,
+    playing: boolean,
+    setPlaying: (v: boolean) => void,
+    elRef: React.MutableRefObject<HTMLAudioElement | null>
+  ) {
+    if (playing && elRef.current) {
+      elRef.current.pause();
+      elRef.current = null;
+      setPlaying(false);
+      return;
+    }
+    const audio = new Audio(src);
+    elRef.current = audio;
+    setPlaying(true);
+    audio.onended = () => { elRef.current = null; setPlaying(false); };
+    audio.play().catch(() => setPlaying(false));
+  }
+
+  async function handleNarrationSave(
+    target: "intro-audio" | "outro-audio",
+    recorder: ReturnType<typeof useAudioRecorder>
+  ) {
+    if (!recorder.audioBlob || recorder.audioBlob.size === 0) return;
+    const ext = recorder.audioBlob.type.includes("mp4") ? ".mp4" : ".webm";
+    const file = new File([recorder.audioBlob], `narration${ext}`, { type: recorder.audioBlob.type });
+    await handleMediaUpload(target, file);
+    recorder.clearAudio();
   }
 
   if (loading) {
@@ -711,6 +755,97 @@ export default function EditSurveyPage() {
                   />
                 )}
               </div>
+              <div>
+                <label className={labelClass}>Audio narration</label>
+                {session.introAudioFilename ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleNarrationReview(
+                        `/api/uploads?file=${encodeURIComponent(session.introAudioFilename!)}`,
+                        introAudioPlaying, setIntroAudioPlaying, introAudioElRef
+                      )}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                    >
+                      {introAudioPlaying ? (
+                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><rect x="5" y="4" width="3" height="12" rx="1" /><rect x="12" y="4" width="3" height="12" rx="1" /></svg>Stop</>
+                      ) : (
+                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.344-5.891a1.5 1.5 0 0 0 0-2.538L6.3 2.841Z" /></svg>Play</>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMediaDelete("intro-audio")}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-colors hover:border-red-200 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : introRecorder.audioBlob && introRecorder.audioBlob.size > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                      New recording ready
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleNarrationReview(
+                        URL.createObjectURL(introRecorder.audioBlob!),
+                        introAudioPlaying, setIntroAudioPlaying, introAudioElRef
+                      )}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                    >
+                      {introAudioPlaying ? "Stop" : "Review"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => introRecorder.clearAudio()}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Redo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNarrationSave("intro-audio", introRecorder)}
+                      className="inline-flex items-center rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={introRecorder.isRecording ? () => introRecorder.stopRecording() : introRecorder.startRecording}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        introRecorder.isRecording
+                          ? "bg-red-500 text-white hover:bg-red-600"
+                          : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {introRecorder.isRecording ? (
+                        <><span className="h-2 w-2 animate-pulse rounded-full bg-white" />Stop Recording</>
+                      ) : (
+                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M7 4a3 3 0 0 1 6 0v6a3 3 0 1 1-6 0V4Z" /><path d="M5.5 9.643a.75.75 0 0 0-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-1.5v-1.546A6.001 6.001 0 0 0 16 10v-.357a.75.75 0 0 0-1.5 0V10a4.5 4.5 0 0 1-9 0v-.357Z" /></svg>Record</>
+                      )}
+                    </button>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50">
+                      Upload
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleMediaUpload("intro-audio", f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  Auto-plays when participants see the intro screen.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -779,6 +914,97 @@ export default function EditSurveyPage() {
                     className="w-full text-sm text-zinc-600 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
                   />
                 )}
+              </div>
+              <div>
+                <label className={labelClass}>Audio narration</label>
+                {session.outroAudioFilename ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleNarrationReview(
+                        `/api/uploads?file=${encodeURIComponent(session.outroAudioFilename!)}`,
+                        outroAudioPlaying, setOutroAudioPlaying, outroAudioElRef
+                      )}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                    >
+                      {outroAudioPlaying ? (
+                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><rect x="5" y="4" width="3" height="12" rx="1" /><rect x="12" y="4" width="3" height="12" rx="1" /></svg>Stop</>
+                      ) : (
+                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.344-5.891a1.5 1.5 0 0 0 0-2.538L6.3 2.841Z" /></svg>Play</>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMediaDelete("outro-audio")}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-colors hover:border-red-200 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : outroRecorder.audioBlob && outroRecorder.audioBlob.size > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                      New recording ready
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleNarrationReview(
+                        URL.createObjectURL(outroRecorder.audioBlob!),
+                        outroAudioPlaying, setOutroAudioPlaying, outroAudioElRef
+                      )}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                    >
+                      {outroAudioPlaying ? "Stop" : "Review"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => outroRecorder.clearAudio()}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Redo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNarrationSave("outro-audio", outroRecorder)}
+                      className="inline-flex items-center rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={outroRecorder.isRecording ? () => outroRecorder.stopRecording() : outroRecorder.startRecording}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        outroRecorder.isRecording
+                          ? "bg-red-500 text-white hover:bg-red-600"
+                          : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {outroRecorder.isRecording ? (
+                        <><span className="h-2 w-2 animate-pulse rounded-full bg-white" />Stop Recording</>
+                      ) : (
+                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M7 4a3 3 0 0 1 6 0v6a3 3 0 1 1-6 0V4Z" /><path d="M5.5 9.643a.75.75 0 0 0-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-1.5v-1.546A6.001 6.001 0 0 0 16 10v-.357a.75.75 0 0 0-1.5 0V10a4.5 4.5 0 0 1-9 0v-.357Z" /></svg>Record</>
+                      )}
+                    </button>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50">
+                      Upload
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleMediaUpload("outro-audio", f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  Auto-plays when participants see the outro screen.
+                </p>
               </div>
             </div>
           </div>
@@ -861,6 +1087,23 @@ export default function EditSurveyPage() {
                 </select>
                 <p className="mt-1.5 text-sm text-zinc-400">
                   UI text shown to participants will be in this language. Intro/outro text above is shown as-is.
+                </p>
+              </div>
+              <div>
+                <label htmlFor="narrationTiming" className={labelClass}>
+                  Audio narration timing
+                </label>
+                <select
+                  id="narrationTiming"
+                  value={narrationTiming}
+                  onChange={(e) => setNarrationTiming(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="simultaneous">Play with background media</option>
+                  <option value="after">Play after background video ends</option>
+                </select>
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  Controls when intro/outro audio narration plays relative to the background video. If no video is set, audio plays immediately regardless.
                 </p>
               </div>
             </div>

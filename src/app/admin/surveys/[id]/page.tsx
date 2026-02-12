@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -58,6 +58,7 @@ const MODE_LABELS: Record<string, string> = {
 
 export default function SurveyOverviewPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
 
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -66,6 +67,7 @@ export default function SurveyOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -163,6 +165,24 @@ export default function SurveyOverviewPage() {
               )}
             </div>
             <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  setDuplicating(true);
+                  try {
+                    const res = await fetch(`/api/surveys/${id}/duplicate`, { method: "POST" });
+                    if (res.ok) {
+                      const newSurvey = await res.json();
+                      router.push(`/admin/surveys/${newSurvey.id}`);
+                    }
+                  } finally {
+                    setDuplicating(false);
+                  }
+                }}
+                disabled={duplicating}
+                className="flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
+              >
+                {duplicating ? "Duplicating..." : "Duplicate"}
+              </button>
               <Link
                 href={`/admin/surveys/${id}/edit`}
                 className="flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"

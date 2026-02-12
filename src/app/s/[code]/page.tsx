@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { t, LOCALES, type Locale } from "@/lib/i18n";
 
@@ -10,6 +10,8 @@ interface Survey {
   introHeading: string;
   introBody: string;
   introMediaFilename: string | null;
+  introAudioFilename: string | null;
+  narrationTiming: string;
   outroHeading: string;
   outroBody: string;
   outroMediaFilename: string | null;
@@ -30,8 +32,11 @@ export default function IntroPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
+  const [audioConsent, setAudioConsent] = useState<boolean | null>(null);
   const [nameError, setNameError] = useState(false);
   const [starting, setStarting] = useState(false);
+  const narrationRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     async function fetchSession() {
@@ -58,6 +63,44 @@ export default function IntroPage() {
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  // Auto-play intro narration audio
+  useEffect(() => {
+    if (!survey?.introAudioFilename) return;
+
+    const audioUrl = `/api/uploads?file=${encodeURIComponent(survey.introAudioFilename)}`;
+    const audio = new Audio(audioUrl);
+    narrationRef.current = audio;
+
+    const hasVideo = !!survey.introMediaFilename && /\.(mp4|webm|mov)$/i.test(survey.introMediaFilename);
+    const timing = survey.narrationTiming;
+
+    if (timing === "after" && hasVideo && videoRef.current) {
+      const video = videoRef.current;
+      const onEnded = () => {
+        audio.play().catch(() => {});
+        video.removeEventListener("ended", onEnded);
+      };
+      video.loop = false;
+      video.addEventListener("ended", onEnded);
+    } else if (timing === "after" && !hasVideo) {
+      // Image or no media: play after short delay
+      const timer = setTimeout(() => audio.play().catch(() => {}), 1500);
+      return () => {
+        clearTimeout(timer);
+        audio.pause();
+        narrationRef.current = null;
+      };
+    } else {
+      // simultaneous or no video
+      audio.play().catch(() => {});
+    }
+
+    return () => {
+      audio.pause();
+      narrationRef.current = null;
+    };
+  }, [survey]);
 
   function handleLanguageChange(newLang: Locale) {
     setLang(newLang);
@@ -87,6 +130,7 @@ export default function IntroPage() {
 
       const data = await res.json();
       localStorage.setItem(`imagevote-participant-${params.code}`, data.id);
+      localStorage.setItem(`imagevote-audio-consent-${params.code}`, JSON.stringify(audioConsent === true));
       router.push(
         survey.votingMode === "pairwise"
           ? `/s/${params.code}/compare`
@@ -135,9 +179,10 @@ export default function IntroPage() {
       {hasMedia && (
         isVideo ? (
           <video
+            ref={videoRef}
             src={`/api/uploads?file=${encodeURIComponent(survey.introMediaFilename!)}`}
             autoPlay
-            loop
+            loop={!(survey.narrationTiming === "after" && survey.introAudioFilename)}
             muted
             playsInline
             className="absolute inset-0 h-full w-full object-cover"
@@ -243,6 +288,45 @@ export default function IntroPage() {
                 : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
             }`}
           />
+        </div>
+
+        {/* Audio consent */}
+        <div className="mt-6 flex w-full max-w-xs flex-col items-center gap-2">
+          <p className={`text-sm text-center ${hasMedia ? "text-white/70" : "text-zinc-500 dark:text-zinc-400"}`}>
+            {t(lang, "intro.audioConsent")}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAudioConsent(true)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                audioConsent === true
+                  ? hasMedia
+                    ? "bg-white text-zinc-900"
+                    : "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : hasMedia
+                    ? "bg-white/20 text-white hover:bg-white/30"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+              }`}
+            >
+              {t(lang, "intro.audioYes")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAudioConsent(false)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                audioConsent === false
+                  ? hasMedia
+                    ? "bg-white text-zinc-900"
+                    : "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : hasMedia
+                    ? "bg-white/20 text-white hover:bg-white/30"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+              }`}
+            >
+              {t(lang, "intro.audioNo")}
+            </button>
+          </div>
         </div>
 
         <button
