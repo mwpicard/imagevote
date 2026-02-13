@@ -64,7 +64,8 @@ export default function IntroPage() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Auto-play intro narration audio
+  // Play intro narration audio — triggered on first user interaction
+  // (browsers block autoplay of audio with sound without a gesture)
   useEffect(() => {
     if (!survey?.introAudioFilename) return;
 
@@ -75,25 +76,42 @@ export default function IntroPage() {
     const hasVideo = !!survey.introMediaFilename && /\.(mp4|webm|mov)$/i.test(survey.introMediaFilename);
     const timing = survey.narrationTiming;
 
-    if (timing === "after" && hasVideo && videoRef.current) {
-      const video = videoRef.current;
-      const onEnded = () => {
+    function startNarration() {
+      if (timing === "after" && hasVideo && videoRef.current) {
+        const video = videoRef.current;
+        video.loop = false;
+        const onEnded = () => {
+          audio.play().catch(() => {});
+          video.removeEventListener("ended", onEnded);
+        };
+        video.addEventListener("ended", onEnded);
+      } else if (timing === "after" && !hasVideo) {
+        setTimeout(() => audio.play().catch(() => {}), 1500);
+      } else {
         audio.play().catch(() => {});
-        video.removeEventListener("ended", onEnded);
-      };
-      video.loop = false;
-      video.addEventListener("ended", onEnded);
-    } else if (timing === "after" && !hasVideo) {
-      // Image or no media: play after short delay
-      const timer = setTimeout(() => audio.play().catch(() => {}), 1500);
-      return () => {
-        clearTimeout(timer);
-        audio.pause();
-        narrationRef.current = null;
-      };
-    } else {
-      // simultaneous or no video
-      audio.play().catch(() => {});
+      }
+    }
+
+    // Try to play immediately (works if user navigated via link click)
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.then(() => {
+        // Autoplay succeeded — if timing is "after", pause and set up properly
+        if (timing === "after") {
+          audio.pause();
+          audio.currentTime = 0;
+          startNarration();
+        }
+      }).catch(() => {
+        // Autoplay blocked — wait for first user interaction
+        function onInteraction() {
+          startNarration();
+          document.removeEventListener("click", onInteraction);
+          document.removeEventListener("touchstart", onInteraction);
+        }
+        document.addEventListener("click", onInteraction, { once: true });
+        document.addEventListener("touchstart", onInteraction, { once: true });
+      });
     }
 
     return () => {

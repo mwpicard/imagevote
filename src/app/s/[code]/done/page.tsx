@@ -105,7 +105,7 @@ export default function DonePage() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Auto-play outro narration audio
+  // Play outro narration audio — triggered on first user interaction if autoplay blocked
   useEffect(() => {
     if (!survey?.outroAudioFilename) return;
 
@@ -116,23 +116,39 @@ export default function DonePage() {
     const hasVideo = !!survey.outroMediaFilename && /\.(mp4|webm|mov)$/i.test(survey.outroMediaFilename);
     const timing = survey.narrationTiming;
 
-    if (timing === "after" && hasVideo && videoRef.current) {
-      const video = videoRef.current;
-      const onEnded = () => {
+    function startNarration() {
+      if (timing === "after" && hasVideo && videoRef.current) {
+        const video = videoRef.current;
+        video.loop = false;
+        const onEnded = () => {
+          audio.play().catch(() => {});
+          video.removeEventListener("ended", onEnded);
+        };
+        video.addEventListener("ended", onEnded);
+      } else if (timing === "after" && !hasVideo) {
+        setTimeout(() => audio.play().catch(() => {}), 1500);
+      } else {
         audio.play().catch(() => {});
-        video.removeEventListener("ended", onEnded);
-      };
-      video.loop = false;
-      video.addEventListener("ended", onEnded);
-    } else if (timing === "after" && !hasVideo) {
-      const timer = setTimeout(() => audio.play().catch(() => {}), 1500);
-      return () => {
-        clearTimeout(timer);
-        audio.pause();
-        narrationRef.current = null;
-      };
-    } else {
-      audio.play().catch(() => {});
+      }
+    }
+
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.then(() => {
+        if (timing === "after") {
+          audio.pause();
+          audio.currentTime = 0;
+          startNarration();
+        }
+      }).catch(() => {
+        function onInteraction() {
+          startNarration();
+          document.removeEventListener("click", onInteraction);
+          document.removeEventListener("touchstart", onInteraction);
+        }
+        document.addEventListener("click", onInteraction, { once: true });
+        document.addEventListener("touchstart", onInteraction, { once: true });
+      });
     }
 
     return () => {
