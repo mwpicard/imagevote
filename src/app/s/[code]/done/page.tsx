@@ -270,8 +270,8 @@ export default function DonePage() {
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-white px-6 dark:bg-zinc-950">
-      {/* Beta offer popup */}
-      {survey.betaPrice && !betaOfferDismissed && (
+      {/* Beta offer popup — shown after order submit */}
+      {survey.betaPrice && orderSubmitted && !betaOfferDismissed && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
           <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-2xl dark:bg-zinc-900">
             <p className="text-lg leading-relaxed text-zinc-800 dark:text-zinc-100">
