@@ -519,6 +519,16 @@ export default function ResultsPage() {
         </div>
       </div>
 
+      {/* Share section */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+        <QRCodeSVG value={sessionUrl} size={120} />
+        <div className="text-center sm:text-left">
+          <p className="text-sm text-gray-500 mb-1">Share this survey</p>
+          <p className="font-mono text-sm sm:text-lg text-gray-900 bg-gray-100 px-3 py-1.5 rounded break-all">{sessionUrl}</p>
+          <p className="text-sm text-gray-500 mt-2">Code: <span className="font-mono font-bold">{survey.code}</span></p>
+        </div>
+      </div>
+
       {/* Participation stats */}
       {participants.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
@@ -698,16 +708,6 @@ export default function ResultsPage() {
           </details>
         );
       })()}
-
-      {/* Share section */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-        <QRCodeSVG value={sessionUrl} size={120} />
-        <div className="text-center sm:text-left">
-          <p className="text-sm text-gray-500 mb-1">Share this survey</p>
-          <p className="font-mono text-sm sm:text-lg text-gray-900 bg-gray-100 px-3 py-1.5 rounded break-all">{sessionUrl}</p>
-          <p className="text-sm text-gray-500 mt-2">Code: <span className="font-mono font-bold">{survey.code}</span></p>
-        </div>
-      </div>
 
       {/* Ranking header */}
       {(responses.length > 0 || pairwiseResponses.length > 0) && (
