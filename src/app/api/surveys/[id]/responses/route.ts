@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { responses } from "@/lib/schema";
+import { transcribeAndSave } from "@/lib/transcribe";
 import { v4 as uuid } from "uuid";
 import { eq } from "drizzle-orm";
 import path from "path";
@@ -62,6 +64,10 @@ export async function POST(
     audioFilename,
     createdAt: new Date().toISOString(),
   });
+
+  if (audioFilename) {
+    after(() => transcribeAndSave(audioFilename, responseId, "responses"));
+  }
 
   return NextResponse.json({ id: responseId }, { status: 201 });
 }

@@ -28,7 +28,6 @@ interface Survey {
   title: string;
   code: string;
   votingMode: string;
-  autoTranscribe: boolean;
   projectId: string | null;
   images: ImageData[];
 }
@@ -165,18 +164,6 @@ export default function ResultsPage() {
     }
   }
 
-  // Auto-transcribe when enabled in survey settings
-  useEffect(() => {
-    if (
-      survey?.autoTranscribe &&
-      transcribeStatus?.available &&
-      transcribeStatus.pending.total > 0 &&
-      !transcribing
-    ) {
-      handleTranscribe();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [survey?.autoTranscribe, transcribeStatus?.available, transcribeStatus?.pending.total]);
 
   if (!survey) {
     return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;

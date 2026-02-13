@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { outroRecordings } from "@/lib/schema";
+import { transcribeAndSave } from "@/lib/transcribe";
 import { v4 as uuid } from "uuid";
 import path from "path";
 import fs from "fs";
@@ -48,6 +50,8 @@ export async function POST(
     audioFilename,
     createdAt: new Date().toISOString(),
   });
+
+  after(() => transcribeAndSave(audioFilename, id, "outroRecordings"));
 
   return NextResponse.json({ id }, { status: 201 });
 }

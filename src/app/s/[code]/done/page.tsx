@@ -12,6 +12,7 @@ interface Survey {
   outroMediaFilename: string | null;
   outroAudioFilename: string | null;
   narrationTiming: string;
+  betaPrice: string | null;
   language: string;
   code: string;
   images: { id: string; filename: string; label: string | null }[];
@@ -36,6 +37,7 @@ export default function DonePage() {
   const [email, setEmail] = useState("");
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [betaOfferDismissed, setBetaOfferDismissed] = useState(false);
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -266,6 +268,30 @@ export default function DonePage() {
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-white px-6 dark:bg-zinc-950">
+      {/* Beta offer popup */}
+      {survey.betaPrice && !betaOfferDismissed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-2xl dark:bg-zinc-900">
+            <p className="text-lg leading-relaxed text-zinc-800 dark:text-zinc-100">
+              {t(lang, "done.betaOfferMessage", { price: survey.betaPrice })}
+            </p>
+            <div className="mt-8 flex flex-col gap-3">
+              <button
+                onClick={() => setBetaOfferDismissed(true)}
+                className="h-12 w-full rounded-xl bg-zinc-900 text-base font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                {t(lang, "done.betaOfferAccept")}
+              </button>
+              <button
+                onClick={() => setBetaOfferDismissed(true)}
+                className="h-12 w-full rounded-xl border border-zinc-200 text-base font-medium text-zinc-500 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                {t(lang, "done.betaOfferDecline")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Background media */}
       {hasMedia && (
         isOutroVideo ? (

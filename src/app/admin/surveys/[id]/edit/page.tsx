@@ -34,6 +34,7 @@ interface Survey {
   randomizeOrder: boolean;
   autoRecord: boolean;
   autoTranscribe: boolean;
+  betaPrice: string | null;
   projectId: string | null;
   code: string;
   createdAt: string;
@@ -344,8 +345,8 @@ export default function EditSurveyPage() {
   const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
   const [autoRecord, setAutoRecord] = useState(false);
-  const [autoTranscribe, setAutoTranscribe] = useState(false);
   const [narrationTiming, setNarrationTiming] = useState("simultaneous");
+  const [betaPrice, setBetaPrice] = useState("");
 
   // Intro/outro audio narration recorders
   const introRecorder = useAudioRecorder();
@@ -382,8 +383,8 @@ export default function EditSurveyPage() {
         setLanguage((data.language || "en") as Locale);
         setRandomizeOrder(data.randomizeOrder);
         setAutoRecord(data.autoRecord ?? false);
-        setAutoTranscribe(data.autoTranscribe ?? false);
         setNarrationTiming(data.narrationTiming || "simultaneous");
+        setBetaPrice(data.betaPrice || "");
       }
     } finally {
       setLoading(false);
@@ -413,8 +414,8 @@ export default function EditSurveyPage() {
           language,
           randomizeOrder,
           autoRecord,
-          autoTranscribe,
           narrationTiming,
+          betaPrice: betaPrice.trim() || null,
         }),
       });
       if (res.ok) {
@@ -1010,6 +1011,22 @@ export default function EditSurveyPage() {
                   Auto-plays when participants see the outro screen.
                 </p>
               </div>
+              <div>
+                <label htmlFor="betaPrice" className={labelClass}>
+                  Beta offer price
+                </label>
+                <input
+                  id="betaPrice"
+                  type="text"
+                  value={betaPrice}
+                  onChange={(e) => setBetaPrice(e.target.value)}
+                  placeholder='e.g. "29€"'
+                  className={inputClass}
+                />
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  If set, participants see a special offer popup on the outro screen.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1071,18 +1088,6 @@ export default function EditSurveyPage() {
                 />
                 <label htmlFor="autoRecord" className="text-sm text-zinc-700">
                   Auto-record participant audio for each image
-                </label>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  id="autoTranscribe"
-                  type="checkbox"
-                  checked={autoTranscribe}
-                  onChange={(e) => setAutoTranscribe(e.target.checked)}
-                  className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="autoTranscribe" className="text-sm text-zinc-700">
-                  Auto-transcribe audio recordings (requires OpenAI API key)
                 </label>
               </div>
               <div>

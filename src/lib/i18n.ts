@@ -69,6 +69,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "done.submitOrder": "Submit",
     "done.orderConfirmation": "Thank you! We'll be in touch.",
     "done.noFavourites": "Thanks for participating!",
+    "done.betaOfferMessage": "To say thanks for your time, we'll reserve one of the very first dormies for you! You can buy one for only {price}!",
+    "done.betaOfferAccept": "OK Thanks",
+    "done.betaOfferDecline": "No, not for now!",
   },
   es: {
     "intro.start": "Comenzar",
@@ -128,6 +131,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "done.submitOrder": "Enviar",
     "done.orderConfirmation": "¡Gracias! Nos pondremos en contacto.",
     "done.noFavourites": "¡Gracias por participar!",
+    "done.betaOfferMessage": "Para agradecerte tu tiempo, ¡te reservaremos uno de los primeros dormies! ¡Puedes comprarlo por solo {price}!",
+    "done.betaOfferAccept": "¡Vale, gracias!",
+    "done.betaOfferDecline": "No, por ahora no.",
   },
   ca: {
     "intro.start": "Començar",
@@ -187,6 +193,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "done.submitOrder": "Enviar",
     "done.orderConfirmation": "Gràcies! Ens posarem en contacte.",
     "done.noFavourites": "Gràcies per participar!",
+    "done.betaOfferMessage": "Per agrair-te el teu temps, et reservarem un dels primers dormies! Pots comprar-lo per només {price}!",
+    "done.betaOfferAccept": "D'acord, gràcies!",
+    "done.betaOfferDecline": "No, de moment no.",
   },
 };
 

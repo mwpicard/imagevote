@@ -40,8 +40,8 @@ export async function PUT(
     language: body.language,
     randomizeOrder: body.randomizeOrder,
     autoRecord: body.autoRecord,
-    autoTranscribe: body.autoTranscribe,
     narrationTiming: body.narrationTiming,
+    betaPrice: body.betaPrice ?? null,
   };
   if ("projectId" in body) {
     updates.projectId = body.projectId;

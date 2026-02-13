@@ -42,6 +42,7 @@ sqlite.exec(`
     randomize_order INTEGER NOT NULL DEFAULT 0,
     auto_record INTEGER NOT NULL DEFAULT 0,
     auto_transcribe INTEGER NOT NULL DEFAULT 0,
+    beta_price TEXT,
     code TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL
   );
@@ -150,4 +151,7 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN narration_timing TEXT NOT NULL DEFAULT 'simultaneous'`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN beta_price TEXT`);
 } catch { /* column already exists */ }

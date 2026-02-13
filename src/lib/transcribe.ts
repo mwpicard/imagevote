@@ -2,6 +2,9 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
+import { db } from "@/lib/db";
+import { responses, pairwiseResponses, outroRecordings } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
 let openaiClient: OpenAI | null = null;
 
@@ -65,6 +68,30 @@ function readWavAsFloat32(wavPath: string): Float32Array {
     float32[i] = pcm16[i] / 32768;
   }
   return float32;
+}
+
+/**
+ * Transcribe an audio file and save the result to the appropriate DB table.
+ * Designed to be called from `after()` — never throws.
+ */
+export async function transcribeAndSave(
+  audioFilename: string,
+  recordId: string,
+  table: "responses" | "pairwiseResponses" | "outroRecordings",
+): Promise<void> {
+  try {
+    const text = await transcribeAudioFile(audioFilename);
+    if (!text) return;
+    if (table === "responses") {
+      await db.update(responses).set({ transcription: text }).where(eq(responses.id, recordId));
+    } else if (table === "pairwiseResponses") {
+      await db.update(pairwiseResponses).set({ transcription: text }).where(eq(pairwiseResponses.id, recordId));
+    } else {
+      await db.update(outroRecordings).set({ transcription: text }).where(eq(outroRecordings.id, recordId));
+    }
+  } catch (err) {
+    console.error(`[transcribeAndSave] Failed for ${table}/${recordId}:`, err);
+  }
 }
 
 export async function transcribeAudioFile(filename: string): Promise<string> {
