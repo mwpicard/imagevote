@@ -50,9 +50,10 @@ function ImageRow({
   img: ImageItem;
   index: number;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, caption: string, audio: File | null, removeAudio: boolean) => Promise<void>;
+  onUpdate: (id: string, label: string, caption: string, audio: File | null, removeAudio: boolean) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [label, setLabel] = useState(img.label || "");
   const [caption, setCaption] = useState(img.caption || "");
   const [removeAudio, setRemoveAudio] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,8 +65,9 @@ function ImageRow({
 
   // Sync when parent data changes (after save)
   useEffect(() => {
+    setLabel(img.label || "");
     setCaption(img.caption || "");
-  }, [img.caption]);
+  }, [img.label, img.caption]);
 
   // Clean up audio element on unmount
   useEffect(() => {
@@ -85,7 +87,7 @@ function ImageRow({
   async function handleSave() {
     setSaving(true);
     const file = audioBlob && audioBlob.size > 0 ? blobToFile(audioBlob) : null;
-    await onUpdate(img.id, caption, file, removeAudio);
+    await onUpdate(img.id, label, caption, file, removeAudio);
     clearAudio();
     setRemoveAudio(false);
     setSaving(false);
@@ -93,6 +95,7 @@ function ImageRow({
   }
 
   function handleCancel() {
+    setLabel(img.label || "");
     setCaption(img.caption || "");
     clearAudio();
     setRemoveAudio(false);
@@ -190,6 +193,16 @@ function ImageRow({
 
       {editing && (
         <div className="mt-3 space-y-3 border-t border-zinc-100 pt-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Name</label>
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Product name shown to participants"
+              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            />
+          </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">Caption</label>
             <input
@@ -534,9 +547,10 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleUpdateImage(imageId: string, caption: string, audio: File | null, removeAudio: boolean) {
+  async function handleUpdateImage(imageId: string, label: string, caption: string, audio: File | null, removeAudio: boolean) {
     const formData = new FormData();
     formData.append("imageId", imageId);
+    formData.append("label", label);
     formData.append("caption", caption);
     if (audio) formData.append("audio", audio);
     if (removeAudio) formData.append("removeAudio", "true");

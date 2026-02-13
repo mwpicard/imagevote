@@ -128,6 +128,12 @@ export async function PATCH(
 
   const updates: Record<string, string | null> = {};
 
+  // Label / name
+  if (formData.has("label")) {
+    const label = formData.get("label") as string;
+    updates.label = label || null;
+  }
+
   // Caption (allow setting to empty string to clear)
   if (formData.has("caption")) {
     const caption = formData.get("caption") as string;
