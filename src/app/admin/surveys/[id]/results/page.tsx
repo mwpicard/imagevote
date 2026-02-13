@@ -163,6 +163,18 @@ export default function ResultsPage() {
     }
   }
 
+  // Auto-transcribe when pending audio exists and API key is available
+  useEffect(() => {
+    if (
+      transcribeStatus?.available &&
+      transcribeStatus.pending.total > 0 &&
+      !transcribing
+    ) {
+      handleTranscribe();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcribeStatus?.available, transcribeStatus?.pending.total]);
+
   if (!survey) {
     return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;
   }
@@ -453,9 +465,6 @@ export default function ResultsPage() {
     URL.revokeObjectURL(url);
   }
 
-  const pendingCount = transcribeStatus?.pending.total ?? 0;
-  const showTranscribeButton = pendingCount > 0;
-
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 max-w-6xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -486,19 +495,14 @@ export default function ResultsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {showTranscribeButton && (
-            <div className="flex flex-col items-start gap-1">
-              <button
-                onClick={handleTranscribe}
-                disabled={transcribing}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
-              >
-                {transcribing ? "Transcribing..." : `Transcribe (${pendingCount})`}
-              </button>
-              {transcribeError && (
-                <p className="text-xs text-red-600">{transcribeError}</p>
-              )}
-            </div>
+          {transcribing && (
+            <span className="flex items-center gap-1.5 px-4 py-2 text-sm text-purple-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-purple-500" />
+              Transcribing...
+            </span>
+          )}
+          {transcribeError && (
+            <span className="px-4 py-2 text-xs text-red-600">{transcribeError}</span>
           )}
           <button
             onClick={() => exportData("csv")}
@@ -567,7 +571,7 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Full transcript — all audio from all participants */}
+      {/* Full transcript — accordion */}
       {(() => {
         const pids = [...new Set([
           ...responses.map((r) => r.participantId),
@@ -598,45 +602,100 @@ export default function ResultsPage() {
           if (entries.length > 0) allEntries.push({ participantId: pid, entries });
         }
         if (allEntries.length === 0) return null;
+
+        const totalAudio = allEntries.reduce((sum, e) => sum + e.entries.length, 0);
+        const transcribedCount = allEntries.reduce((sum, e) => sum + e.entries.filter((x) => x.text).length, 0);
+
+        function downloadTranscriptTxt() {
+          const lines: string[] = [];
+          lines.push(`${survey!.title} — Full Transcript`);
+          lines.push(`Exported ${new Date().toLocaleString()}`);
+          lines.push("");
+          for (const { participantId, entries } of allEntries) {
+            lines.push(`--- ${participantName(participantId)} ---`);
+            for (const e of entries) {
+              if (e.text) {
+                lines.push(`[${e.context}] "${e.text}"`);
+              }
+            }
+            lines.push("");
+          }
+          const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${survey!.title}-transcript.txt`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+
         return (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Full Transcript</h2>
-            <div className="space-y-6">
-              {allEntries.map(({ participantId, entries }) => (
-                <div key={participantId}>
-                  <h3 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-1 mb-2">
-                    {participantName(participantId)}
-                  </h3>
-                  <div className="space-y-1.5">
-                    {entries.map((e, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        {e.audioFilename && (
-                          <button
-                            onClick={() => playAudio(e.audioFilename!)}
-                            className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium ${
-                              playingAudio === e.audioFilename
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
-                          >
-                            {playingAudio === e.audioFilename ? "..." : "\u25B6"}
-                          </button>
-                        )}
-                        <p className="text-sm text-gray-700">
-                          <span className="text-gray-400">[{e.context}]</span>{" "}
-                          {e.text ? (
-                            <span className="italic">&ldquo;{e.text}&rdquo;</span>
-                          ) : (
-                            <span className="text-gray-300 italic">not transcribed</span>
-                          )}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+          <details className="bg-white rounded-xl border border-gray-200 mb-8 group">
+            <summary className="flex cursor-pointer items-center justify-between p-5 select-none">
+              <div className="flex items-center gap-3">
+                <h2 className="text-base font-semibold text-gray-900">Full Transcript</h2>
+                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
+                  {transcribedCount}/{totalAudio} transcribed
+                </span>
+                {transcribing && (
+                  <span className="flex items-center gap-1 text-xs text-purple-500">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-purple-400" />
+                    transcribing
+                  </span>
+                )}
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-gray-400 transition-transform group-open:rotate-180">
+                <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+              </svg>
+            </summary>
+            <div className="border-t border-gray-100 px-6 pb-6 pt-4">
+              {transcribedCount > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={downloadTranscriptTxt}
+                    className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                  >
+                    Download .txt
+                  </button>
                 </div>
-              ))}
+              )}
+              <div className="space-y-6">
+                {allEntries.map(({ participantId, entries }) => (
+                  <div key={participantId}>
+                    <h3 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-1 mb-2">
+                      {participantName(participantId)}
+                    </h3>
+                    <div className="space-y-1.5">
+                      {entries.map((e, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          {e.audioFilename && (
+                            <button
+                              onClick={() => playAudio(e.audioFilename!)}
+                              className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium ${
+                                playingAudio === e.audioFilename
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {playingAudio === e.audioFilename ? "..." : "\u25B6"}
+                            </button>
+                          )}
+                          <p className="text-sm text-gray-700">
+                            <span className="text-gray-400">[{e.context}]</span>{" "}
+                            {e.text ? (
+                              <span className="italic">&ldquo;{e.text}&rdquo;</span>
+                            ) : (
+                              <span className="text-gray-300 italic">not transcribed</span>
+                            )}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </details>
         );
       })()}
 
