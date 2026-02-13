@@ -33,6 +33,7 @@ interface Survey {
   language: string;
   randomizeOrder: boolean;
   autoRecord: boolean;
+  autoTranscribe: boolean;
   projectId: string | null;
   code: string;
   createdAt: string;
@@ -343,6 +344,7 @@ export default function EditSurveyPage() {
   const [language, setLanguage] = useState<Locale>("en");
   const [randomizeOrder, setRandomizeOrder] = useState(false);
   const [autoRecord, setAutoRecord] = useState(false);
+  const [autoTranscribe, setAutoTranscribe] = useState(false);
   const [narrationTiming, setNarrationTiming] = useState("simultaneous");
 
   // Intro/outro audio narration recorders
@@ -380,6 +382,7 @@ export default function EditSurveyPage() {
         setLanguage((data.language || "en") as Locale);
         setRandomizeOrder(data.randomizeOrder);
         setAutoRecord(data.autoRecord ?? false);
+        setAutoTranscribe(data.autoTranscribe ?? false);
         setNarrationTiming(data.narrationTiming || "simultaneous");
       }
     } finally {
@@ -410,6 +413,7 @@ export default function EditSurveyPage() {
           language,
           randomizeOrder,
           autoRecord,
+          autoTranscribe,
           narrationTiming,
         }),
       });
@@ -1067,6 +1071,18 @@ export default function EditSurveyPage() {
                 />
                 <label htmlFor="autoRecord" className="text-sm text-zinc-700">
                   Auto-record participant audio for each image
+                </label>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  id="autoTranscribe"
+                  type="checkbox"
+                  checked={autoTranscribe}
+                  onChange={(e) => setAutoTranscribe(e.target.checked)}
+                  className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="autoTranscribe" className="text-sm text-zinc-700">
+                  Auto-transcribe audio recordings (requires OpenAI API key)
                 </label>
               </div>
               <div>

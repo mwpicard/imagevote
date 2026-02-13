@@ -28,6 +28,7 @@ interface Survey {
   title: string;
   code: string;
   votingMode: string;
+  autoTranscribe: boolean;
   projectId: string | null;
   images: ImageData[];
 }
@@ -163,9 +164,10 @@ export default function ResultsPage() {
     }
   }
 
-  // Auto-transcribe when pending audio exists and API key is available
+  // Auto-transcribe when enabled in survey settings
   useEffect(() => {
     if (
+      survey?.autoTranscribe &&
       transcribeStatus?.available &&
       transcribeStatus.pending.total > 0 &&
       !transcribing
@@ -173,7 +175,7 @@ export default function ResultsPage() {
       handleTranscribe();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transcribeStatus?.available, transcribeStatus?.pending.total]);
+  }, [survey?.autoTranscribe, transcribeStatus?.available, transcribeStatus?.pending.total]);
 
   if (!survey) {
     return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;
@@ -659,16 +661,51 @@ export default function ResultsPage() {
               </svg>
             </summary>
             <div className="border-t border-gray-100 px-6 pb-6 pt-4">
-              {transcribedCount > 0 && (
-                <div className="mb-4">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {transcribedCount < totalAudio && transcribeStatus?.available && (
                   <button
-                    onClick={downloadTranscriptTxt}
-                    className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                    onClick={handleTranscribe}
+                    disabled={transcribing}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
                   >
-                    Download .txt
+                    {transcribing ? "Transcribing..." : `Transcribe (${totalAudio - transcribedCount} pending)`}
                   </button>
-                </div>
-              )}
+                )}
+                {transcribedCount > 0 && (
+                  <>
+                    <button
+                      onClick={downloadTranscriptTxt}
+                      className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                    >
+                      Download .txt
+                    </button>
+                    {typeof navigator !== "undefined" && !!navigator.share && (
+                      <button
+                        onClick={() => {
+                          const lines: string[] = [];
+                          lines.push(`${survey!.title} — Full Transcript`);
+                          lines.push("");
+                          for (const { participantId: pid, entries: ents } of allEntries) {
+                            lines.push(`--- ${participantName(pid)} ---`);
+                            for (const e of ents) {
+                              if (e.text) lines.push(`[${e.context}] "${e.text}"`);
+                            }
+                            lines.push("");
+                          }
+                          const file = new File([lines.join("\n")], `${survey!.title}-transcript.txt`, { type: "text/plain" });
+                          navigator.share({ title: `${survey!.title} — Transcript`, files: [file] }).catch(() => {});
+                        }}
+                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                      >
+                        Share
+                      </button>
+                    )}
+                  </>
+                )}
+                {transcribeError && (
+                  <span className="text-xs text-red-600">{transcribeError}</span>
+                )}
+              </div>
               <div className="space-y-6">
                 {allEntries.map(({ participantId, entries }) => (
                   <div key={participantId}>

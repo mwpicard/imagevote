@@ -41,6 +41,7 @@ sqlite.exec(`
     language TEXT NOT NULL DEFAULT 'en',
     randomize_order INTEGER NOT NULL DEFAULT 0,
     auto_record INTEGER NOT NULL DEFAULT 0,
+    auto_transcribe INTEGER NOT NULL DEFAULT 0,
     code TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL
   );
@@ -137,6 +138,9 @@ try {
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE participants ADD COLUMN last_seen_at TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN auto_transcribe INTEGER NOT NULL DEFAULT 0`);
 } catch { /* column already exists */ }
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN intro_audio_filename TEXT`);

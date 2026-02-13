@@ -81,6 +81,7 @@ export async function POST(
     introAudioFilename,
     outroAudioFilename,
     narrationTiming: source.narrationTiming,
+    autoTranscribe: source.autoTranscribe,
     votingMode: source.votingMode,
     language: source.language,
     randomizeOrder: source.randomizeOrder,
