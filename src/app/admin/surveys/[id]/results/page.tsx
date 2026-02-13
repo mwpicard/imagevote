@@ -92,6 +92,7 @@ export default function ResultsPage() {
   const [transcribing, setTranscribing] = useState(false);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [showAlgorithm, setShowAlgorithm] = useState(false);
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(() => {
@@ -662,7 +663,7 @@ export default function ResultsPage() {
             </summary>
             <div className="border-t border-gray-100 px-6 pb-6 pt-4">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                {transcribedCount < totalAudio && transcribeStatus?.available && (
+                {transcribedCount < totalAudio && (
                   <button
                     onClick={handleTranscribe}
                     disabled={transcribing}
@@ -679,27 +680,27 @@ export default function ResultsPage() {
                     >
                       Download .txt
                     </button>
-                    {typeof navigator !== "undefined" && !!navigator.share && (
-                      <button
-                        onClick={() => {
-                          const lines: string[] = [];
-                          lines.push(`${survey!.title} — Full Transcript`);
-                          lines.push("");
-                          for (const { participantId: pid, entries: ents } of allEntries) {
-                            lines.push(`--- ${participantName(pid)} ---`);
-                            for (const e of ents) {
-                              if (e.text) lines.push(`[${e.context}] "${e.text}"`);
-                            }
-                            lines.push("");
+                    <button
+                      onClick={() => {
+                        const lines: string[] = [];
+                        lines.push(`${survey!.title} — Full Transcript`);
+                        lines.push("");
+                        for (const { participantId: pid, entries: ents } of allEntries) {
+                          lines.push(`--- ${participantName(pid)} ---`);
+                          for (const e of ents) {
+                            if (e.text) lines.push(`[${e.context}] "${e.text}"`);
                           }
-                          const file = new File([lines.join("\n")], `${survey!.title}-transcript.txt`, { type: "text/plain" });
-                          navigator.share({ title: `${survey!.title} — Transcript`, files: [file] }).catch(() => {});
-                        }}
-                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
-                      >
-                        Share
-                      </button>
-                    )}
+                          lines.push("");
+                        }
+                        navigator.clipboard.writeText(lines.join("\n")).then(() => {
+                          setCopiedTranscript(true);
+                          setTimeout(() => setCopiedTranscript(false), 2000);
+                        });
+                      }}
+                      className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                    >
+                      {copiedTranscript ? "Copied!" : "Copy to clipboard"}
+                    </button>
                   </>
                 )}
                 {transcribeError && (
