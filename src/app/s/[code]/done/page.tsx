@@ -478,14 +478,18 @@ export default function DonePage() {
                       {t(lang, "done.ctaPreorderSuccess")}
                     </div>
                   ) : (
-                    <button
-                      onClick={() => email.trim() ? handleCtaSubmit("preorder") : setEmailPromptFor("preorder")}
-                      disabled={ctaSubmitting}
-                      className="h-14 w-full rounded-xl border-2 border-blue-600 bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <span>{t(lang, "done.ctaPreorder")}</span>
-                      <span className="ml-1 text-sm font-normal opacity-80">({survey.betaPrice})</span>
-                    </button>
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        onClick={() => email.trim() ? handleCtaSubmit("preorder") : setEmailPromptFor("preorder")}
+                        disabled={ctaSubmitting}
+                        className="h-14 w-full rounded-xl border-2 border-blue-600 bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {t(lang, "done.ctaPreorder", { price: survey.betaPrice })}
+                      </button>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {t(lang, "done.ctaPreorderDesc")}
+                      </span>
+                    </div>
                   )
                 )}
 

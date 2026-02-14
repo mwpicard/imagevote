@@ -15,7 +15,7 @@ export async function POST(
 ) {
   const { id: surveyId } = await params;
   const body = await req.json();
-  const { participantId, email, imageIds } = body;
+  const { participantId, email, imageIds, type } = body;
 
   if (!participantId || !email || !imageIds || !Array.isArray(imageIds) || imageIds.length === 0) {
     return NextResponse.json(
@@ -49,9 +49,10 @@ export async function POST(
         from: "Dormy <onboarding@resend.dev>",
         to: adminEmail,
         replyTo: email,
-        subject: `New beta tester sign-up: ${email}`,
+        subject: `New ${type === "preorder" ? "pre-order" : "beta tester"} sign-up: ${email}`,
         html: `
-          <h2>New Beta Tester Interest</h2>
+          <h2>New ${type === "preorder" ? "Pre-order" : "Beta Tester"} Interest</h2>
+          <p><strong>Type:</strong> ${type === "preorder" ? "Pre-order" : "Beta list"}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Survey:</strong> ${surveyTitle}</p>
           <p><strong>Images selected:</strong> ${imageIds.length}</p>
@@ -64,22 +65,24 @@ export async function POST(
     }
   }
 
-  // Send confirmation to the participant
-  try {
-    await getResend().emails.send({
-      from: "Dormy <onboarding@resend.dev>",
-      to: email,
-      replyTo: adminEmail || "mwpicard@gmail.com",
-      subject: "You're on the Dormy Beta tester list!",
-      html: `
-        <h2>Welcome to the Dormy Beta list!</h2>
-        <p>Thanks for signing up — we'll be in touch soon with updates on how to get one of the very first Dormy.</p>
-        <p>If you have any questions, just reply to this email.</p>
-      `,
-    });
-  } catch (err) {
-    console.error("Failed to send confirmation email:", err);
-  }
+  // Note: Participant confirmation email requires a verified domain in Resend.
+  // The sandbox "onboarding@resend.dev" can only send to the account owner's email.
+  // Once you verify a custom domain, uncomment this block to send participant confirmations.
+  // try {
+  //   await getResend().emails.send({
+  //     from: "Dormy <hello@yourdomain.com>",
+  //     to: email,
+  //     replyTo: adminEmail || "mwpicard@gmail.com",
+  //     subject: type === "preorder"
+  //       ? "Your Dormy pre-order is confirmed!"
+  //       : "You're on the Dormy Beta tester list!",
+  //     html: type === "preorder"
+  //       ? `<h2>Pre-order confirmed!</h2><p>Thanks for your pre-order — we'll be in touch soon.</p>`
+  //       : `<h2>Welcome to the Dormy Beta list!</h2><p>Thanks for signing up — we'll be in touch soon.</p>`,
+  //   });
+  // } catch (err) {
+  //   console.error("Failed to send confirmation email:", err);
+  // }
 
   return NextResponse.json({ id }, { status: 201 });
 }
