@@ -91,7 +91,7 @@ export async function POST(
         : "You're on the Dormy Beta tester list!",
       html: type === "preorder"
         ? (() => {
-            const shopBase = preorderUrl || "https://dormy.re/shop";
+            const shopBase = preorderUrl || "https://dormy.re/shop.html";
             const url = new URL(shopBase);
             url.searchParams.set("email", email);
             if (coupon) url.searchParams.set("coupon", coupon);

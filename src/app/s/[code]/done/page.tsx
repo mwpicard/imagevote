@@ -254,7 +254,7 @@ export default function DonePage() {
       }
 
       // Open store in new tab (old tab stays open with coupon visible)
-      const storeUrl = new URL(survey.preorderUrl || "https://dormy.re/store");
+      const storeUrl = new URL(survey.preorderUrl || "https://dormy.re/shop.html");
       storeUrl.searchParams.set("email", trimmedEmail);
       if (data.coupon) storeUrl.searchParams.set("coupon", data.coupon);
       window.open(storeUrl.toString(), "_blank");
@@ -546,7 +546,7 @@ export default function DonePage() {
                   )}
                   <a
                     href={(() => {
-                      const url = new URL(survey.preorderUrl || "https://dormy.re/store");
+                      const url = new URL(survey.preorderUrl || "https://dormy.re/shop.html");
                       url.searchParams.set("email", submittedEmail);
                       url.searchParams.set("coupon", couponCode);
                       return url.toString();
