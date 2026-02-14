@@ -37,6 +37,7 @@ export default function DonePage() {
   const [favouritesLoaded, setFavouritesLoaded] = useState(false);
   const [email, setEmail] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [emailPromptFor, setEmailPromptFor] = useState<"beta" | "preorder" | null>(null);
   const [betaSubmitted, setBetaSubmitted] = useState(false);
   const [preorderSubmitted, setPreorderSubmitted] = useState(false);
   const [ctaSubmitting, setCtaSubmitting] = useState(false);
@@ -441,22 +442,11 @@ export default function DonePage() {
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
-              <h2 className="text-center text-xl font-bold text-zinc-900 dark:text-zinc-50">
+              <h2 className="text-center text-2xl font-bold text-zinc-900 dark:text-zinc-50">
                 {t(lang, "done.modalTitle")}
               </h2>
 
-              {/* Email input — shared across CTAs */}
-              <div className="mt-5">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t(lang, "done.enterEmail")}
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
-                />
-              </div>
-
-              <div className="mt-4 flex flex-col gap-2.5">
+              <div className="mt-5 flex flex-col gap-2.5">
                 {/* 1. Beta testers */}
                 {betaSubmitted ? (
                   <div className="flex h-14 items-center justify-center rounded-xl bg-green-50 text-sm font-medium text-green-600 dark:bg-green-950 dark:text-green-400">
@@ -464,12 +454,21 @@ export default function DonePage() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => handleCtaSubmit("beta")}
-                    disabled={ctaSubmitting || !email.trim()}
+                    onClick={() => email.trim() ? handleCtaSubmit("beta") : setEmailPromptFor("beta")}
+                    disabled={ctaSubmitting}
                     className="h-14 w-full rounded-xl border-2 border-zinc-900 bg-zinc-900 text-base font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
                     {t(lang, "done.ctaBeta")}
                   </button>
+                )}
+
+                {/* OR divider */}
+                {survey.betaPrice && !betaSubmitted && !preorderSubmitted && (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+                    <span className="text-lg font-bold text-zinc-400 dark:text-zinc-500">OR</span>
+                    <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+                  </div>
                 )}
 
                 {/* 2. Pre-order */}
@@ -480,8 +479,8 @@ export default function DonePage() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleCtaSubmit("preorder")}
-                      disabled={ctaSubmitting || !email.trim()}
+                      onClick={() => email.trim() ? handleCtaSubmit("preorder") : setEmailPromptFor("preorder")}
+                      disabled={ctaSubmitting}
                       className="h-14 w-full rounded-xl border-2 border-blue-600 bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <span>{t(lang, "done.ctaPreorder")}</span>
@@ -489,6 +488,13 @@ export default function DonePage() {
                     </button>
                   )
                 )}
+
+                {/* AND divider */}
+                <div className="flex items-center gap-3 py-1">
+                  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+                  <span className="text-lg font-bold text-zinc-400 dark:text-zinc-500">AND</span>
+                  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+                </div>
 
                 {/* 3. Share */}
                 {(() => {
@@ -537,12 +543,68 @@ export default function DonePage() {
                 })()}
               </div>
 
+              {/* Email at bottom */}
+              <div className="mt-4">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t(lang, "done.enterEmail")}
+                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                />
+              </div>
+
               <button
                 onClick={() => setShowModal(false)}
                 className="mt-4 w-full text-center text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
               >
                 {t(lang, "done.closeTab")}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Email prompt popup — appears when clicking beta/preorder without email */}
+        {emailPromptFor && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-6">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+              <h3 className="text-center text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                {t(lang, "done.enterEmail")}
+              </h3>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (email.trim()) {
+                    handleCtaSubmit(emailPromptFor);
+                    setEmailPromptFor(null);
+                  }
+                }}
+                className="mt-4 flex flex-col gap-3"
+              >
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                />
+                <button
+                  type="submit"
+                  disabled={ctaSubmitting}
+                  className="h-12 w-full rounded-xl bg-zinc-900 text-base font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  {t(lang, "done.submitOrder")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmailPromptFor(null)}
+                  className="text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                >
+                  {t(lang, "done.closeTab")}
+                </button>
+              </form>
             </div>
           </div>
         )}
