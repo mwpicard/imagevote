@@ -38,8 +38,6 @@ export default function DonePage() {
   const [favouritesLoaded, setFavouritesLoaded] = useState(false);
   const [email, setEmail] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [emailPromptFor, setEmailPromptFor] = useState<"beta" | "preorder" | null>(null);
-  const [betaSubmitted, setBetaSubmitted] = useState(false);
   const [preorderSubmitted, setPreorderSubmitted] = useState(false);
   const [ctaSubmitting, setCtaSubmitting] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -226,7 +224,7 @@ export default function DonePage() {
     }
   }
 
-  async function handleCtaSubmit(type: "beta" | "preorder") {
+  async function handlePreorder() {
     if (!survey || !email.trim()) return;
 
     const imageIds = favourites.length > 0
@@ -242,27 +240,25 @@ export default function DonePage() {
           participantId,
           email: email.trim(),
           imageIds: imageIds.length > 0 ? imageIds : [],
-          type,
+          type: "preorder",
         }),
       });
 
       if (!res.ok) throw new Error("Failed to submit");
       const data = await res.json();
       const trimmedEmail = email.trim();
-      if (type === "beta") {
-        setBetaSubmitted(true);
-      } else {
-        setPreorderSubmitted(true);
-        setSubmittedEmail(trimmedEmail);
-        if (data.coupon) {
-          setCouponCode(data.coupon);
-        } else {
-          const url = new URL(survey.preorderUrl || "https://dormy.re/shop");
-          url.searchParams.set("email", trimmedEmail);
-          window.location.href = url.toString();
-          return;
-        }
+      setPreorderSubmitted(true);
+      setSubmittedEmail(trimmedEmail);
+      if (data.coupon) {
+        setCouponCode(data.coupon);
       }
+
+      // Open store in new tab (old tab stays open with coupon visible)
+      const storeUrl = new URL(survey.preorderUrl || "https://dormy.re/store");
+      storeUrl.searchParams.set("email", trimmedEmail);
+      if (data.coupon) storeUrl.searchParams.set("coupon", data.coupon);
+      window.open(storeUrl.toString(), "_blank");
+
       setEmail("");
     } catch {
       // Keep form visible so user can retry
@@ -476,171 +472,139 @@ export default function DonePage() {
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
-              <h2 className="text-center text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                {t(lang, "done.modalTitle")}
-              </h2>
-
-              <div className="mt-5 flex flex-col gap-2.5">
-                {/* 1. Beta testers */}
-                {betaSubmitted ? (
-                  <div className="flex h-14 items-center justify-center rounded-xl bg-green-50 text-sm font-medium text-green-600 dark:bg-green-950 dark:text-green-400">
-                    {t(lang, "done.ctaBetaSuccess")}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => email.trim() ? handleCtaSubmit("beta") : setEmailPromptFor("beta")}
-                    disabled={ctaSubmitting}
-                    className="h-14 w-full rounded-xl border-2 border-zinc-900 bg-zinc-900 text-base font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              {/* Pre-order: email form or coupon card */}
+              {survey.betaPrice && !preorderSubmitted && (
+                <>
+                  <h2 className="text-center text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                    {t(lang, "done.modalTitle")}
+                  </h2>
+                  <p className="mt-2 text-center text-base text-zinc-500 dark:text-zinc-400">
+                    {t(lang, "done.emailForDiscount")}
+                  </p>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (email.trim()) handlePreorder();
+                    }}
+                    className="mt-5 flex flex-col gap-3"
                   >
-                    {t(lang, "done.ctaBeta")}
-                  </button>
-                )}
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={ctaSubmitting}
+                      className="h-14 w-full rounded-xl bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {t(lang, "done.getDiscount")}
+                    </button>
+                  </form>
+                </>
+              )}
 
-                {/* OR divider */}
-                {survey.betaPrice && !betaSubmitted && !preorderSubmitted && (
-                  <div className="flex items-center gap-3 py-1">
-                    <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
-                    <span className="text-lg font-bold text-zinc-400 dark:text-zinc-500">OR</span>
-                    <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+              {/* Coupon card — shown after preorder, tab stays open */}
+              {preorderSubmitted && couponCode && (
+                <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-950">
+                  <h3 className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                    {t(lang, "done.couponTitle")}
+                  </h3>
+                  <div className="flex w-full items-center gap-2">
+                    <code className="flex-1 rounded-lg border-2 border-dashed border-blue-300 bg-white px-4 py-3 text-center text-lg font-bold tracking-widest text-blue-800 dark:border-blue-600 dark:bg-zinc-900 dark:text-blue-200">
+                      {couponCode}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(couponCode);
+                        setCouponCopied(true);
+                        setTimeout(() => setCouponCopied(false), 2000);
+                      }}
+                      className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+                      aria-label="Copy coupon"
+                    >
+                      {couponCopied ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
-                )}
-
-                {/* 2. Pre-order */}
-                {survey.betaPrice && (
-                  preorderSubmitted ? (
-                    couponCode ? (
-                      <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-950">
-                        <h3 className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                          {t(lang, "done.couponTitle")}
-                        </h3>
-                        <div className="flex w-full items-center gap-2">
-                          <code className="flex-1 rounded-lg border-2 border-dashed border-blue-300 bg-white px-4 py-3 text-center text-lg font-bold tracking-widest text-blue-800 dark:border-blue-600 dark:bg-zinc-900 dark:text-blue-200">
-                            {couponCode}
-                          </code>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(couponCode);
-                              setCouponCopied(true);
-                              setTimeout(() => setCouponCopied(false), 2000);
-                            }}
-                            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
-                            aria-label="Copy coupon"
-                          >
-                            {couponCopied ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                        {couponCopied && (
-                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                            {t(lang, "done.couponCopied")}
-                          </span>
-                        )}
-                        <a
-                          href={(() => {
-                            const url = new URL(survey.preorderUrl || "https://dormy.re/shop");
-                            url.searchParams.set("email", submittedEmail);
-                            url.searchParams.set("coupon", couponCode);
-                            return url.toString();
-                          })()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
-                        >
-                          {t(lang, "done.couponGoToShop")} &rarr;
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="flex h-14 items-center justify-center rounded-xl bg-green-50 text-sm font-medium text-green-600 dark:bg-green-950 dark:text-green-400">
-                        {t(lang, "done.ctaPreorderSuccess")}
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        onClick={() => email.trim() ? handleCtaSubmit("preorder") : setEmailPromptFor("preorder")}
-                        disabled={ctaSubmitting}
-                        className="h-14 w-full rounded-xl border-2 border-blue-600 bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {t(lang, "done.ctaPreorder", { price: survey.betaPrice })}
-                      </button>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {t(lang, "done.ctaPreorderDesc")}
-                      </span>
-                    </div>
-                  )
-                )}
-
-                {/* AND divider */}
-                <div className="flex items-center gap-3 py-1">
-                  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
-                  <span className="text-lg font-bold text-zinc-400 dark:text-zinc-500">AND</span>
-                  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+                  {couponCopied && (
+                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                      {t(lang, "done.couponCopied")}
+                    </span>
+                  )}
+                  <a
+                    href={(() => {
+                      const url = new URL(survey.preorderUrl || "https://dormy.re/store");
+                      url.searchParams.set("email", submittedEmail);
+                      url.searchParams.set("coupon", couponCode);
+                      return url.toString();
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+                  >
+                    {t(lang, "done.couponGoToShop")} &rarr;
+                  </a>
                 </div>
+              )}
 
-                {/* 3. Share */}
+              {preorderSubmitted && !couponCode && (
+                <div className="flex h-14 items-center justify-center rounded-xl bg-green-50 text-sm font-medium text-green-600 dark:bg-green-950 dark:text-green-400">
+                  {t(lang, "done.ctaPreorderSuccess")}
+                </div>
+              )}
+
+              {/* No betaPrice — just show title */}
+              {!survey.betaPrice && !preorderSubmitted && (
+                <h2 className="text-center text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                  {t(lang, "done.closeTab")}
+                </h2>
+              )}
+
+              {/* Copy survey link */}
+              <div className="mt-5">
                 {(() => {
                   const trackingUrl = `${window.location.origin}/s/${survey.code}?ref=${encodeURIComponent(participantId)}`;
-                  const waMessage = t(lang, "done.shareWhatsAppMessage", { url: trackingUrl });
                   return (
-                    <>
-                      <a
-                        href={`https://wa.me/?text=${encodeURIComponent(waMessage)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#25D366] bg-[#25D366] text-base font-semibold text-white transition-colors hover:bg-[#20bd5a] active:bg-[#1da851]"
-                      >
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                        {t(lang, "done.ctaShare")}
-                      </a>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(trackingUrl);
-                          setLinkCopied(true);
-                          setTimeout(() => setLinkCopied(false), 2000);
-                        }}
-                        className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-zinc-200 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      >
-                        {linkCopied ? (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-green-500">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            {t(lang, "done.shareLinkCopied")}
-                          </>
-                        ) : (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                            </svg>
-                            {t(lang, "done.shareCopyLink")}
-                          </>
-                        )}
-                      </button>
-                    </>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(trackingUrl);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      }}
+                      className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-zinc-200 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      {linkCopied ? (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-green-500">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          {t(lang, "done.shareLinkCopied")}
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                          </svg>
+                          {t(lang, "done.shareCopyLink")}
+                        </>
+                      )}
+                    </button>
                   );
                 })()}
-              </div>
-
-              {/* Email at bottom */}
-              <div className="mt-4">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t(lang, "done.enterEmail")}
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
-                />
               </div>
 
               <button
@@ -649,51 +613,6 @@ export default function DonePage() {
               >
                 {t(lang, "done.closeTab")}
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Email prompt popup — appears when clicking beta/preorder without email */}
-        {emailPromptFor && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-6">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
-              <h3 className="text-center text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                {t(lang, "done.enterEmail")}
-              </h3>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (email.trim()) {
-                    handleCtaSubmit(emailPromptFor);
-                    setEmailPromptFor(null);
-                  }
-                }}
-                className="mt-4 flex flex-col gap-3"
-              >
-                <input
-                  type="email"
-                  required
-                  autoFocus
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
-                />
-                <button
-                  type="submit"
-                  disabled={ctaSubmitting}
-                  className="h-12 w-full rounded-xl bg-zinc-900 text-base font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  {t(lang, "done.submitOrder")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEmailPromptFor(null)}
-                  className="text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
-                >
-                  {t(lang, "done.closeTab")}
-                </button>
-              </form>
             </div>
           </div>
         )}
