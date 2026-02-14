@@ -88,6 +88,7 @@ export async function POST(
     autoRecord: source.autoRecord,
     maxComparisons: source.maxComparisons,
     betaPrice: source.betaPrice,
+    preorderUrl: source.preorderUrl,
     projectId: source.projectId,
     code: newCode,
     createdAt: now,

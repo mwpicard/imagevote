@@ -32,6 +32,7 @@ export const surveys = sqliteTable("sessions", {
   autoTranscribe: integer("auto_transcribe", { mode: "boolean" }).notNull().default(false),
   maxComparisons: integer("max_comparisons"),
   betaPrice: text("beta_price"),
+  preorderUrl: text("preorder_url"),
   projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   code: text("code").notNull().unique(),
   createdAt: text("created_at").notNull(),

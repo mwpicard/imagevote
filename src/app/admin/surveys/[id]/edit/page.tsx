@@ -36,6 +36,7 @@ interface Survey {
   autoTranscribe: boolean;
   maxComparisons: number | null;
   betaPrice: string | null;
+  preorderUrl: string | null;
   projectId: string | null;
   code: string;
   createdAt: string;
@@ -362,6 +363,7 @@ export default function EditSurveyPage() {
   const [narrationTiming, setNarrationTiming] = useState("simultaneous");
   const [maxComparisons, setMaxComparisons] = useState("");
   const [betaPrice, setBetaPrice] = useState("");
+  const [preorderUrl, setPreorderUrl] = useState("");
 
   // Intro/outro audio narration recorders
   const introRecorder = useAudioRecorder();
@@ -401,6 +403,7 @@ export default function EditSurveyPage() {
         setNarrationTiming(data.narrationTiming || "simultaneous");
         setMaxComparisons(data.maxComparisons ? String(data.maxComparisons) : "");
         setBetaPrice(data.betaPrice || "");
+        setPreorderUrl(data.preorderUrl || "");
       }
     } finally {
       setLoading(false);
@@ -433,6 +436,7 @@ export default function EditSurveyPage() {
           narrationTiming,
           maxComparisons: maxComparisons ? parseInt(maxComparisons) : null,
           betaPrice: betaPrice.trim() || null,
+          preorderUrl: preorderUrl.trim() || null,
         }),
       });
       if (res.ok) {
@@ -1043,6 +1047,22 @@ export default function EditSurveyPage() {
                 />
                 <p className="mt-1.5 text-sm text-zinc-400">
                   If set, participants see a special offer popup on the outro screen.
+                </p>
+              </div>
+              <div>
+                <label htmlFor="preorderUrl" className={labelClass}>
+                  Pre-order URL
+                </label>
+                <input
+                  id="preorderUrl"
+                  type="url"
+                  value={preorderUrl}
+                  onChange={(e) => setPreorderUrl(e.target.value)}
+                  placeholder="https://dormy.re/checkout"
+                  className={inputClass}
+                />
+                <p className="mt-1.5 text-sm text-zinc-400">
+                  If set, participants who pre-order are redirected to this URL (with their email as a query param) after submitting.
                 </p>
               </div>
             </div>

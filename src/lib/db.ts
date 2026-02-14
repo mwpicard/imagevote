@@ -159,3 +159,6 @@ try {
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN max_comparisons INTEGER`);
 } catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN preorder_url TEXT`);
+} catch { /* column already exists */ }

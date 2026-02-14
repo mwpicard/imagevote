@@ -13,6 +13,7 @@ interface Survey {
   outroAudioFilename: string | null;
   narrationTiming: string;
   betaPrice: string | null;
+  preorderUrl: string | null;
   language: string;
   code: string;
   images: { id: string; filename: string; label: string | null }[];
@@ -42,8 +43,12 @@ export default function DonePage() {
   const [preorderSubmitted, setPreorderSubmitted] = useState(false);
   const [ctaSubmitting, setCtaSubmitting] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [couponCopied, setCouponCopied] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const inputFocusedRef = useRef(false);
 
   const { isRecording, audioBlob, startRecording, stopRecording } =
     useAudioRecorder();
@@ -110,6 +115,19 @@ export default function DonePage() {
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  // Auto-show CTA modal after 7s of inactivity (not typing, not recording)
+  useEffect(() => {
+    if (showModal || submitted || submitting) return;
+
+    const timer = setTimeout(() => {
+      if (!inputFocusedRef.current && !isRecording) {
+        setShowModal(true);
+      }
+    }, 7000);
+
+    return () => clearTimeout(timer);
+  }, [showModal, submitted, submitting, isRecording, finalText]);
 
   // Play outro narration audio — triggered on first user interaction if autoplay blocked
   useEffect(() => {
@@ -229,8 +247,22 @@ export default function DonePage() {
       });
 
       if (!res.ok) throw new Error("Failed to submit");
-      if (type === "beta") setBetaSubmitted(true);
-      else setPreorderSubmitted(true);
+      const data = await res.json();
+      const trimmedEmail = email.trim();
+      if (type === "beta") {
+        setBetaSubmitted(true);
+      } else {
+        setPreorderSubmitted(true);
+        setSubmittedEmail(trimmedEmail);
+        if (data.coupon) {
+          setCouponCode(data.coupon);
+        } else {
+          const url = new URL(survey.preorderUrl || "https://dormy.re/shop");
+          url.searchParams.set("email", trimmedEmail);
+          window.location.href = url.toString();
+          return;
+        }
+      }
       setEmail("");
     } catch {
       // Keep form visible so user can retry
@@ -380,6 +412,8 @@ export default function DonePage() {
                 type="text"
                 value={finalText}
                 onChange={(e) => setFinalText(e.target.value)}
+                onFocus={() => { inputFocusedRef.current = true; }}
+                onBlur={() => { inputFocusedRef.current = false; }}
                 placeholder={t(lang, "done.finalThoughtsPlaceholder")}
                 className={`h-12 flex-1 rounded-xl border px-4 text-sm outline-none transition-colors ${
                   hasMedia
@@ -474,9 +508,60 @@ export default function DonePage() {
                 {/* 2. Pre-order */}
                 {survey.betaPrice && (
                   preorderSubmitted ? (
-                    <div className="flex h-14 items-center justify-center rounded-xl bg-green-50 text-sm font-medium text-green-600 dark:bg-green-950 dark:text-green-400">
-                      {t(lang, "done.ctaPreorderSuccess")}
-                    </div>
+                    couponCode ? (
+                      <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-950">
+                        <h3 className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                          {t(lang, "done.couponTitle")}
+                        </h3>
+                        <div className="flex w-full items-center gap-2">
+                          <code className="flex-1 rounded-lg border-2 border-dashed border-blue-300 bg-white px-4 py-3 text-center text-lg font-bold tracking-widest text-blue-800 dark:border-blue-600 dark:bg-zinc-900 dark:text-blue-200">
+                            {couponCode}
+                          </code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(couponCode);
+                              setCouponCopied(true);
+                              setTimeout(() => setCouponCopied(false), 2000);
+                            }}
+                            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+                            aria-label="Copy coupon"
+                          >
+                            {couponCopied ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        {couponCopied && (
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            {t(lang, "done.couponCopied")}
+                          </span>
+                        )}
+                        <a
+                          href={(() => {
+                            const url = new URL(survey.preorderUrl || "https://dormy.re/shop");
+                            url.searchParams.set("email", submittedEmail);
+                            url.searchParams.set("coupon", couponCode);
+                            return url.toString();
+                          })()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+                        >
+                          {t(lang, "done.couponGoToShop")} &rarr;
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="flex h-14 items-center justify-center rounded-xl bg-green-50 text-sm font-medium text-green-600 dark:bg-green-950 dark:text-green-400">
+                        {t(lang, "done.ctaPreorderSuccess")}
+                      </div>
+                    )
                   ) : (
                     <div className="flex flex-col items-center gap-1">
                       <button

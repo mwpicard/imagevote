@@ -43,6 +43,7 @@ export async function PUT(
     narrationTiming: body.narrationTiming,
     maxComparisons: body.maxComparisons ?? null,
     betaPrice: body.betaPrice ?? null,
+    preorderUrl: body.preorderUrl ?? null,
   };
   if ("projectId" in body) {
     updates.projectId = body.projectId;
