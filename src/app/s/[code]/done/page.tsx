@@ -272,9 +272,10 @@ export default function DonePage() {
   const isOutroVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(survey.outroMediaFilename!);
   const hasFavourites = favouritesLoaded && favourites.length > 0;
   // If no direct favourites, show all survey images as fallback
-  const displayImages: Favourite[] = hasFavourites
+  const allImages: Favourite[] = hasFavourites
     ? favourites
     : survey.images.map((img) => ({ id: img.id, filename: img.filename, label: img.label }));
+  const displayImages = allImages.slice(0, 3);
   const plural = displayImages.length > 1;
 
   return (
