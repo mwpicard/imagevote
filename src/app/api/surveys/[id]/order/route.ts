@@ -46,7 +46,7 @@ export async function POST(
   if (adminEmail) {
     try {
       await getResend().emails.send({
-        from: "Dormy <onboarding@resend.dev>",
+        from: "Dormy <hello@guidal.org>",
         to: adminEmail,
         replyTo: email,
         subject: `New ${type === "preorder" ? "pre-order" : "beta tester"} sign-up: ${email}`,
@@ -65,24 +65,22 @@ export async function POST(
     }
   }
 
-  // Note: Participant confirmation email requires a verified domain in Resend.
-  // The sandbox "onboarding@resend.dev" can only send to the account owner's email.
-  // Once you verify a custom domain, uncomment this block to send participant confirmations.
-  // try {
-  //   await getResend().emails.send({
-  //     from: "Dormy <hello@yourdomain.com>",
-  //     to: email,
-  //     replyTo: adminEmail || "mwpicard@gmail.com",
-  //     subject: type === "preorder"
-  //       ? "Your Dormy pre-order is confirmed!"
-  //       : "You're on the Dormy Beta tester list!",
-  //     html: type === "preorder"
-  //       ? `<h2>Pre-order confirmed!</h2><p>Thanks for your pre-order — we'll be in touch soon.</p>`
-  //       : `<h2>Welcome to the Dormy Beta list!</h2><p>Thanks for signing up — we'll be in touch soon.</p>`,
-  //   });
-  // } catch (err) {
-  //   console.error("Failed to send confirmation email:", err);
-  // }
+  // Send confirmation to participant
+  try {
+    await getResend().emails.send({
+      from: "Dormy <hello@guidal.org>",
+      to: email,
+      replyTo: adminEmail || "mwpicard@gmail.com",
+      subject: type === "preorder"
+        ? "Your Dormy pre-order is confirmed!"
+        : "You're on the Dormy Beta tester list!",
+      html: type === "preorder"
+        ? `<h2>Pre-order confirmed!</h2><p>Thanks for your pre-order — we'll be in touch soon.</p><p>If you have any questions, just reply to this email.</p>`
+        : `<h2>Welcome to the Dormy Beta list!</h2><p>Thanks for signing up — we'll be in touch soon with updates on how to get one of the very first Dormy.</p><p>If you have any questions, just reply to this email.</p>`,
+    });
+  } catch (err) {
+    console.error("Failed to send confirmation email:", err);
+  }
 
   return NextResponse.json({ id }, { status: 201 });
 }
