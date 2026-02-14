@@ -86,6 +86,7 @@ export async function POST(
     language: source.language,
     randomizeOrder: source.randomizeOrder,
     autoRecord: source.autoRecord,
+    maxComparisons: source.maxComparisons,
     betaPrice: source.betaPrice,
     projectId: source.projectId,
     code: newCode,

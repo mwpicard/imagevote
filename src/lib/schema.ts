@@ -30,6 +30,7 @@ export const surveys = sqliteTable("sessions", {
   randomizeOrder: integer("randomize_order", { mode: "boolean" }).notNull().default(false),
   autoRecord: integer("auto_record", { mode: "boolean" }).notNull().default(false),
   autoTranscribe: integer("auto_transcribe", { mode: "boolean" }).notNull().default(false),
+  maxComparisons: integer("max_comparisons"),
   betaPrice: text("beta_price"),
   projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   code: text("code").notNull().unique(),

@@ -55,7 +55,10 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.round2Label": "Bonus Round",
 
     // Done
-    "done.finalThoughts": "Want to share any final thoughts?",
+    "done.finalThoughts": "Any final thoughts?",
+    "done.finalThoughtsPlaceholder": "Type your thoughts here...",
+    "done.doneButton": "Done",
+    "done.modalTitle": "One more thing before you go!",
     "done.submitRecording": "Submit Recording",
     "done.submitting": "Submitting...",
     "done.confirmation": "Your recording has been submitted. Thank you!",
@@ -126,7 +129,10 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.breakTired": "Lo siento, estoy cansado/a",
     "compare.round2Label": "Ronda extra",
 
-    "done.finalThoughts": "¿Quieres compartir alguna impresión final?",
+    "done.finalThoughts": "¿Alguna impresión final?",
+    "done.finalThoughtsPlaceholder": "Escribe tus impresiones aquí...",
+    "done.doneButton": "Listo",
+    "done.modalTitle": "¡Una cosa más antes de irte!",
     "done.submitRecording": "Enviar grabación",
     "done.submitting": "Enviando...",
     "done.confirmation": "Tu grabación se ha enviado. ¡Gracias!",
@@ -197,7 +203,10 @@ const translations: Record<Locale, Record<string, string>> = {
     "compare.breakTired": "Ho sento, estic cansat/da",
     "compare.round2Label": "Ronda extra",
 
-    "done.finalThoughts": "Vols compartir alguna impressió final?",
+    "done.finalThoughts": "Alguna impressió final?",
+    "done.finalThoughtsPlaceholder": "Escriu les teves impressions aquí...",
+    "done.doneButton": "Fet",
+    "done.modalTitle": "Una cosa més abans de marxar!",
     "done.submitRecording": "Enviar gravació",
     "done.submitting": "Enviant...",
     "done.confirmation": "La teva gravació s'ha enviat. Gràcies!",

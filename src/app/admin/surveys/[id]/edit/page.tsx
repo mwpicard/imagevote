@@ -34,6 +34,7 @@ interface Survey {
   randomizeOrder: boolean;
   autoRecord: boolean;
   autoTranscribe: boolean;
+  maxComparisons: number | null;
   betaPrice: string | null;
   projectId: string | null;
   code: string;
@@ -359,6 +360,7 @@ export default function EditSurveyPage() {
   const [randomizeOrder, setRandomizeOrder] = useState(false);
   const [autoRecord, setAutoRecord] = useState(false);
   const [narrationTiming, setNarrationTiming] = useState("simultaneous");
+  const [maxComparisons, setMaxComparisons] = useState("");
   const [betaPrice, setBetaPrice] = useState("");
 
   // Intro/outro audio narration recorders
@@ -397,6 +399,7 @@ export default function EditSurveyPage() {
         setRandomizeOrder(data.randomizeOrder);
         setAutoRecord(data.autoRecord ?? false);
         setNarrationTiming(data.narrationTiming || "simultaneous");
+        setMaxComparisons(data.maxComparisons ? String(data.maxComparisons) : "");
         setBetaPrice(data.betaPrice || "");
       }
     } finally {
@@ -428,6 +431,7 @@ export default function EditSurveyPage() {
           randomizeOrder,
           autoRecord,
           narrationTiming,
+          maxComparisons: maxComparisons ? parseInt(maxComparisons) : null,
           betaPrice: betaPrice.trim() || null,
         }),
       });
@@ -1080,6 +1084,25 @@ export default function EditSurveyPage() {
                   </div>
                 )}
               </div>
+              {(votingMode === "guided_tour" || votingMode === "pairwise") && (
+                <div>
+                  <label htmlFor="maxComparisons" className={labelClass}>
+                    Max comparisons before break
+                  </label>
+                  <input
+                    id="maxComparisons"
+                    type="number"
+                    min={1}
+                    value={maxComparisons}
+                    onChange={(e) => setMaxComparisons(e.target.value)}
+                    placeholder="All (no break)"
+                    className={inputClass}
+                  />
+                  <p className="mt-1.5 text-sm text-zinc-400">
+                    After this many comparisons, participants are asked if they want to continue or stop. Leave empty for no limit.
+                  </p>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <input
                   id="randomizeOrder"

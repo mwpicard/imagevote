@@ -32,26 +32,34 @@ export async function POST(
   const formData = await req.formData();
   const participantId = formData.get("participantId") as string;
   const audio = formData.get("audio") as File | null;
+  const transcription = formData.get("transcription") as string | null;
 
-  if (!participantId || !audio) {
-    return NextResponse.json({ error: "participantId and audio are required" }, { status: 400 });
+  if (!participantId || (!audio && !transcription)) {
+    return NextResponse.json({ error: "participantId and audio or text are required" }, { status: 400 });
   }
 
   const id = uuid();
-  const ext = path.extname(audio.name) || ".webm";
-  const audioFilename = `outro-${id}${ext}`;
-  const buffer = Buffer.from(await audio.arrayBuffer());
-  fs.writeFileSync(path.join(uploadsDir, audioFilename), buffer);
+  let audioFilename = "";
+
+  if (audio) {
+    const ext = path.extname(audio.name) || ".webm";
+    audioFilename = `outro-${id}${ext}`;
+    const buffer = Buffer.from(await audio.arrayBuffer());
+    fs.writeFileSync(path.join(uploadsDir, audioFilename), buffer);
+  }
 
   await db.insert(outroRecordings).values({
     id,
     surveyId,
     participantId,
     audioFilename,
+    transcription: transcription || null,
     createdAt: new Date().toISOString(),
   });
 
-  after(() => transcribeAndSave(audioFilename, id, "outroRecordings"));
+  if (audio) {
+    after(() => transcribeAndSave(audioFilename, id, "outroRecordings"));
+  }
 
   return NextResponse.json({ id }, { status: 201 });
 }

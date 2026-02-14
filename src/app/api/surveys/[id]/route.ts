@@ -41,6 +41,7 @@ export async function PUT(
     randomizeOrder: body.randomizeOrder,
     autoRecord: body.autoRecord,
     narrationTiming: body.narrationTiming,
+    maxComparisons: body.maxComparisons ?? null,
     betaPrice: body.betaPrice ?? null,
   };
   if ("projectId" in body) {

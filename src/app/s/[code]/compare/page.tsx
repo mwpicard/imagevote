@@ -16,6 +16,7 @@ interface Survey {
   id: string;
   title: string;
   votingMode: string;
+  maxComparisons: number | null;
   language: string;
   code: string;
   images: ImageItem[];
@@ -62,6 +63,7 @@ export default function ComparePage() {
   const [round2Pairs, setRound2Pairs] = useState<Pair[]>([]);
   const [phase, setPhase] = useState<"round1" | "break" | "round2">("round1");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [comparisonsSinceBreak, setComparisonsSinceBreak] = useState(0);
   const [sliderValue, setSliderValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -159,13 +161,23 @@ export default function ComparePage() {
       // Clear audio so it doesn't get re-submitted for the next pair
       clearAudio();
 
-      if (currentIndex + 1 >= pairs.length) {
+      const nextCount = comparisonsSinceBreak + 1;
+      const maxComp = survey.maxComparisons;
+      const isLastPair = currentIndex + 1 >= pairs.length;
+
+      if (isLastPair) {
         if (phase === "round1") {
+          setComparisonsSinceBreak(0);
           setPhase("break");
         } else {
           router.push(`/s/${params.code}/done`);
         }
+      } else if (maxComp && nextCount >= maxComp) {
+        // Hit the max comparisons threshold — offer a break
+        setComparisonsSinceBreak(0);
+        setPhase("break");
       } else {
+        setComparisonsSinceBreak(nextCount);
         setCurrentIndex((prev) => prev + 1);
         setSliderValue(0);
       }
@@ -185,6 +197,7 @@ export default function ComparePage() {
     clearAudio,
     participantId,
     currentIndex,
+    comparisonsSinceBreak,
     pairs.length,
     phase,
     router,
@@ -230,6 +243,7 @@ export default function ComparePage() {
   }
 
   if (phase === "break") {
+    const isEndOfRound1 = currentIndex + 1 >= pairs.length && pairs !== round2Pairs;
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-6 dark:bg-zinc-950">
         <div className="w-full max-w-sm text-center">
@@ -239,11 +253,19 @@ export default function ComparePage() {
           <div className="mt-8 flex flex-col gap-3">
             <button
               onClick={() => {
-                setPairs(round2Pairs);
-                setCurrentIndex(0);
-                setSliderValue(0);
                 clearAudio();
-                setPhase("round2");
+                if (isEndOfRound1) {
+                  // Switch to round 2
+                  setPairs(round2Pairs);
+                  setCurrentIndex(0);
+                  setSliderValue(0);
+                  setPhase("round2");
+                } else {
+                  // Resume current round from next pair
+                  setCurrentIndex((prev) => prev + 1);
+                  setSliderValue(0);
+                  setPhase(pairs === round2Pairs ? "round2" : "round1");
+                }
               }}
               className="h-14 w-full rounded-2xl bg-zinc-900 text-lg font-semibold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
             >
