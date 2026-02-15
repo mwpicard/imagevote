@@ -44,6 +44,14 @@ export async function PUT(
     maxComparisons: body.maxComparisons ?? null,
     betaPrice: body.betaPrice ?? null,
     preorderUrl: body.preorderUrl ?? null,
+    introHeadingEs: body.introHeadingEs ?? null,
+    introHeadingCa: body.introHeadingCa ?? null,
+    introBodyEs: body.introBodyEs ?? null,
+    introBodyCa: body.introBodyCa ?? null,
+    outroHeadingEs: body.outroHeadingEs ?? null,
+    outroHeadingCa: body.outroHeadingCa ?? null,
+    outroBodyEs: body.outroBodyEs ?? null,
+    outroBodyCa: body.outroBodyCa ?? null,
   };
   if ("projectId" in body) {
     updates.projectId = body.projectId;

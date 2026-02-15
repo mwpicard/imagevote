@@ -37,6 +37,14 @@ interface Survey {
   maxComparisons: number | null;
   betaPrice: string | null;
   preorderUrl: string | null;
+  introHeadingEs: string | null;
+  introHeadingCa: string | null;
+  introBodyEs: string | null;
+  introBodyCa: string | null;
+  outroHeadingEs: string | null;
+  outroHeadingCa: string | null;
+  outroBodyEs: string | null;
+  outroBodyCa: string | null;
   projectId: string | null;
   code: string;
   createdAt: string;
@@ -364,6 +372,14 @@ export default function EditSurveyPage() {
   const [maxComparisons, setMaxComparisons] = useState("");
   const [betaPrice, setBetaPrice] = useState("");
   const [preorderUrl, setPreorderUrl] = useState("");
+  const [introHeadingEs, setIntroHeadingEs] = useState("");
+  const [introHeadingCa, setIntroHeadingCa] = useState("");
+  const [introBodyEs, setIntroBodyEs] = useState("");
+  const [introBodyCa, setIntroBodyCa] = useState("");
+  const [outroHeadingEs, setOutroHeadingEs] = useState("");
+  const [outroHeadingCa, setOutroHeadingCa] = useState("");
+  const [outroBodyEs, setOutroBodyEs] = useState("");
+  const [outroBodyCa, setOutroBodyCa] = useState("");
 
   // Intro/outro audio narration recorders
   const introRecorder = useAudioRecorder();
@@ -404,6 +420,14 @@ export default function EditSurveyPage() {
         setMaxComparisons(data.maxComparisons ? String(data.maxComparisons) : "");
         setBetaPrice(data.betaPrice || "");
         setPreorderUrl(data.preorderUrl || "");
+        setIntroHeadingEs(data.introHeadingEs || "");
+        setIntroHeadingCa(data.introHeadingCa || "");
+        setIntroBodyEs(data.introBodyEs || "");
+        setIntroBodyCa(data.introBodyCa || "");
+        setOutroHeadingEs(data.outroHeadingEs || "");
+        setOutroHeadingCa(data.outroHeadingCa || "");
+        setOutroBodyEs(data.outroBodyEs || "");
+        setOutroBodyCa(data.outroBodyCa || "");
       }
     } finally {
       setLoading(false);
@@ -437,6 +461,14 @@ export default function EditSurveyPage() {
           maxComparisons: maxComparisons ? parseInt(maxComparisons) : null,
           betaPrice: betaPrice.trim() || null,
           preorderUrl: preorderUrl.trim() || null,
+          introHeadingEs: introHeadingEs.trim() || null,
+          introHeadingCa: introHeadingCa.trim() || null,
+          introBodyEs: introBodyEs.trim() || null,
+          introBodyCa: introBodyCa.trim() || null,
+          outroHeadingEs: outroHeadingEs.trim() || null,
+          outroHeadingCa: outroHeadingCa.trim() || null,
+          outroBodyEs: outroBodyEs.trim() || null,
+          outroBodyCa: outroBodyCa.trim() || null,
         }),
       });
       if (res.ok) {
@@ -732,6 +764,27 @@ export default function EditSurveyPage() {
                   onChange={(e) => setIntroHeading(e.target.value)}
                   className={inputClass}
                 />
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                    Translations (ES / CA)
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <input
+                      type="text"
+                      value={introHeadingEs}
+                      onChange={(e) => setIntroHeadingEs(e.target.value)}
+                      placeholder="Spanish translation"
+                      className={inputClass}
+                    />
+                    <input
+                      type="text"
+                      value={introHeadingCa}
+                      onChange={(e) => setIntroHeadingCa(e.target.value)}
+                      placeholder="Catalan translation"
+                      className={inputClass}
+                    />
+                  </div>
+                </details>
               </div>
               <div>
                 <label htmlFor="introBody" className={labelClass}>
@@ -744,6 +797,27 @@ export default function EditSurveyPage() {
                   rows={3}
                   className={inputClass}
                 />
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                    Translations (ES / CA)
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <textarea
+                      value={introBodyEs}
+                      onChange={(e) => setIntroBodyEs(e.target.value)}
+                      placeholder="Spanish translation"
+                      rows={2}
+                      className={inputClass}
+                    />
+                    <textarea
+                      value={introBodyCa}
+                      onChange={(e) => setIntroBodyCa(e.target.value)}
+                      placeholder="Catalan translation"
+                      rows={2}
+                      className={inputClass}
+                    />
+                  </div>
+                </details>
               </div>
               <div>
                 <label className={labelClass}>Background image or video</label>
@@ -892,6 +966,27 @@ export default function EditSurveyPage() {
                   onChange={(e) => setOutroHeading(e.target.value)}
                   className={inputClass}
                 />
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                    Translations (ES / CA)
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <input
+                      type="text"
+                      value={outroHeadingEs}
+                      onChange={(e) => setOutroHeadingEs(e.target.value)}
+                      placeholder="Spanish translation"
+                      className={inputClass}
+                    />
+                    <input
+                      type="text"
+                      value={outroHeadingCa}
+                      onChange={(e) => setOutroHeadingCa(e.target.value)}
+                      placeholder="Catalan translation"
+                      className={inputClass}
+                    />
+                  </div>
+                </details>
               </div>
               <div>
                 <label htmlFor="outroBody" className={labelClass}>
@@ -904,6 +999,27 @@ export default function EditSurveyPage() {
                   rows={3}
                   className={inputClass}
                 />
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                    Translations (ES / CA)
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <textarea
+                      value={outroBodyEs}
+                      onChange={(e) => setOutroBodyEs(e.target.value)}
+                      placeholder="Spanish translation"
+                      rows={2}
+                      className={inputClass}
+                    />
+                    <textarea
+                      value={outroBodyCa}
+                      onChange={(e) => setOutroBodyCa(e.target.value)}
+                      placeholder="Catalan translation"
+                      rows={2}
+                      className={inputClass}
+                    />
+                  </div>
+                </details>
               </div>
               <div>
                 <label className={labelClass}>Background image or video</label>
@@ -1164,7 +1280,7 @@ export default function EditSurveyPage() {
                   ))}
                 </select>
                 <p className="mt-1.5 text-sm text-zinc-400">
-                  UI text shown to participants will be in this language. Intro/outro text above is shown as-is.
+                  UI text shown to participants will be in this language. Intro/outro content uses translations if provided.
                 </p>
               </div>
               <div>

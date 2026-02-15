@@ -9,6 +9,10 @@ interface Survey {
   title: string;
   introHeading: string;
   introBody: string;
+  introHeadingEs: string | null;
+  introHeadingCa: string | null;
+  introBodyEs: string | null;
+  introBodyCa: string | null;
   introMediaFilename: string | null;
   introAudioFilename: string | null;
   narrationTiming: string;
@@ -20,6 +24,18 @@ interface Survey {
   randomizeOrder: boolean;
   code: string;
   images: { id: string }[];
+}
+
+function localized(survey: Survey, field: "introHeading" | "introBody", lang: string): string {
+  if (lang === "es") {
+    const key = (field + "Es") as keyof Survey;
+    return (survey[key] as string) || survey[field];
+  }
+  if (lang === "ca") {
+    const key = (field + "Ca") as keyof Survey;
+    return (survey[key] as string) || survey[field];
+  }
+  return survey[field];
 }
 
 export default function IntroPage() {
@@ -217,11 +233,11 @@ export default function IntroPage() {
 
       <div className={`relative z-10 flex w-full max-w-lg flex-col items-center text-center ${hasMedia ? "text-white" : ""}`}>
         <h1 className={`text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${hasMedia ? "text-white" : "text-zinc-900 dark:text-zinc-50"}`}>
-          {survey.introHeading}
+          {localized(survey, "introHeading", lang)}
         </h1>
 
         <p className={`mt-6 text-lg leading-relaxed ${hasMedia ? "text-white/80" : "text-zinc-600 dark:text-zinc-400"}`}>
-          {survey.introBody}
+          {localized(survey, "introBody", lang)}
         </p>
 
         <p className={`mt-8 text-sm font-medium ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>

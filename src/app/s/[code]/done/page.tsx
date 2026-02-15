@@ -9,6 +9,10 @@ interface Survey {
   id: string;
   outroHeading: string;
   outroBody: string;
+  outroHeadingEs: string | null;
+  outroHeadingCa: string | null;
+  outroBodyEs: string | null;
+  outroBodyCa: string | null;
   outroMediaFilename: string | null;
   outroAudioFilename: string | null;
   narrationTiming: string;
@@ -17,6 +21,18 @@ interface Survey {
   language: string;
   code: string;
   images: { id: string; filename: string; label: string | null }[];
+}
+
+function localized(survey: Survey, field: "outroHeading" | "outroBody", lang: string): string {
+  if (lang === "es") {
+    const key = (field + "Es") as keyof Survey;
+    return (survey[key] as string) || survey[field];
+  }
+  if (lang === "ca") {
+    const key = (field + "Ca") as keyof Survey;
+    return (survey[key] as string) || survey[field];
+  }
+  return survey[field];
 }
 
 interface Favourite {
@@ -132,7 +148,7 @@ export default function DonePage() {
 
   // Auto-show CTA modal after 7s of inactivity (not typing, not recording)
   useEffect(() => {
-    if (showModal || submitted || submitting) return;
+    if (!survey || showModal || submitted || submitting) return;
 
     const timer = setTimeout(() => {
       if (!inputFocusedRef.current && !isRecording) {
@@ -141,7 +157,7 @@ export default function DonePage() {
     }, 7000);
 
     return () => clearTimeout(timer);
-  }, [showModal, submitted, submitting, isRecording, finalText]);
+  }, [survey, showModal, submitted, submitting, isRecording, finalText]);
 
   // Play outro narration audio — triggered on first user interaction if autoplay blocked
   useEffect(() => {
@@ -364,11 +380,11 @@ export default function DonePage() {
         </div>
 
         <h1 className={`mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${hasMedia ? "text-white" : "text-zinc-900 dark:text-zinc-50"}`}>
-          {survey.outroHeading}
+          {localized(survey, "outroHeading", lang)}
         </h1>
 
         <p className={`mt-6 text-lg leading-relaxed ${hasMedia ? "text-white/80" : "text-zinc-600 dark:text-zinc-400"}`}>
-          {survey.outroBody}
+          {localized(survey, "outroBody", lang)}
         </p>
 
         {/* Ranked images */}
