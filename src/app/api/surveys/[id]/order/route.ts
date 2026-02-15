@@ -7,7 +7,7 @@ import { Resend } from "resend";
 import { generateCoupon, parsePriceToCents } from "@/lib/coupon-generator";
 
 function getResend() {
-  return new Resend(process.env["RESEND_API_KEY"]);
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
 export async function POST(
@@ -43,19 +43,12 @@ export async function POST(
   const preorderUrl = survey?.preorderUrl;
 
   // Generate coupon for pre-orders with a beta price
-  // Use dynamic env access to prevent build-time inlining
-  const envKey = "COUPON_SECRET";
-  const secret = process.env[envKey];
+  const secret = process.env.COUPON_SECRET;
   let coupon: string | undefined;
-  console.log("[order] type:", type, "betaPrice:", survey?.betaPrice, "COUPON_SECRET set:", !!secret, "all env keys:", Object.keys(process.env).filter(k => k.startsWith("COUPON") || k.startsWith("RESEND") || k.startsWith("ADMIN")));
-  if (type === "preorder" && survey?.betaPrice) {
-    if (secret) {
-      const cents = parsePriceToCents(survey.betaPrice);
-      console.log("[order] cents:", cents);
-      if (cents > 0) {
-        coupon = generateCoupon(email, cents, secret);
-        console.log("[order] generated coupon:", coupon);
-      }
+  if (type === "preorder" && survey?.betaPrice && secret) {
+    const cents = parsePriceToCents(survey.betaPrice);
+    if (cents > 0) {
+      coupon = generateCoupon(email, cents, secret);
     }
   }
 

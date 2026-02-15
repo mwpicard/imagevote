@@ -21,6 +21,15 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+# Railway injects service variables as Docker build args;
+# forward them to runtime ENV so process.env can read them.
+ARG RESEND_API_KEY
+ARG ADMIN_EMAIL
+ARG COUPON_SECRET
+ENV RESEND_API_KEY=$RESEND_API_KEY
+ENV ADMIN_EMAIL=$ADMIN_EMAIL
+ENV COUPON_SECRET=$COUPON_SECRET
+
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
