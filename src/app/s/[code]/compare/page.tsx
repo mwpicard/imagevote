@@ -283,6 +283,14 @@ export default function ComparePage() {
     );
   }
 
+  // Show progress within the current batch, not the full round
+  const batchStart = currentIndex - comparisonsSinceBreak;
+  const remainingPairs = pairs.length - batchStart;
+  const batchSize = survey.maxComparisons
+    ? Math.min(survey.maxComparisons, remainingPairs)
+    : remainingPairs;
+  const batchProgress = comparisonsSinceBreak + 1;
+
   const preferA = sliderValue < 0;
   const preferB = sliderValue > 0;
 
@@ -294,7 +302,7 @@ export default function ComparePage() {
           {phase === "round2" ? t(lang, "compare.round2Label") : t(lang, "compare.phaseLabel")}
         </span>
         <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
-          {t(lang, "compare.pairNofM", { n: currentIndex + 1, total: pairs.length })}
+          {t(lang, "compare.pairNofM", { n: batchProgress, total: batchSize })}
         </span>
       </div>
 
@@ -303,7 +311,7 @@ export default function ComparePage() {
         <div
           className="h-full rounded-full bg-blue-500 transition-all duration-300"
           style={{
-            width: `${((currentIndex + 1) / pairs.length) * 100}%`,
+            width: `${(batchProgress / batchSize) * 100}%`,
           }}
         />
       </div>
@@ -413,14 +421,14 @@ export default function ComparePage() {
         {/* Progress bar above button */}
         <div className="w-full max-w-xs">
           <div className="mb-2 flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-500">
-            <span>{currentIndex + 1} of {pairs.length}</span>
-            <span>{Math.round(((currentIndex + 1) / pairs.length) * 100)}%</span>
+            <span>{batchProgress} of {batchSize}</span>
+            <span>{Math.round((batchProgress / batchSize) * 100)}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
             <div
               className="h-full rounded-full bg-blue-500 transition-all duration-300"
               style={{
-                width: `${((currentIndex + 1) / pairs.length) * 100}%`,
+                width: `${(batchProgress / batchSize) * 100}%`,
               }}
             />
           </div>
@@ -436,7 +444,7 @@ export default function ComparePage() {
             ? t(lang, "eval.submitting")
             : sliderValue === 0
               ? t(lang, "compare.noPreference")
-              : currentIndex + 1 >= pairs.length
+              : batchProgress >= batchSize
                 ? t(lang, "eval.finish")
                 : t(lang, "eval.next")}
         </button>
