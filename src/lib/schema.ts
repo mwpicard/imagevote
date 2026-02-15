@@ -54,6 +54,8 @@ export const images = sqliteTable("images", {
   audioFilename: text("audio_filename"),
   label: text("label"),
   caption: text("caption"),
+  captionEs: text("caption_es"),
+  captionCa: text("caption_ca"),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

@@ -12,6 +12,8 @@ interface ImageItem {
   audioFilename: string | null;
   label: string | null;
   caption: string | null;
+  captionEs: string | null;
+  captionCa: string | null;
   sortOrder: number;
 }
 
@@ -100,6 +102,12 @@ export default function EvaluatePage() {
     typeof window !== "undefined"
       ? localStorage.getItem(`imagevote-audio-consent-${params.code}`) === "true"
       : false;
+
+  function localizedCaption(img: ImageItem): string | null {
+    if (lang === "es" && img.captionEs) return img.captionEs;
+    if (lang === "ca" && img.captionCa) return img.captionCa;
+    return img.caption;
+  }
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -295,9 +303,9 @@ export default function EvaluatePage() {
           alt={currentImage.label || `Image ${currentIndex + 1}`}
           className="evaluate-image max-h-[55dvh] w-full rounded-xl object-contain"
         />
-        {currentImage.caption && (
+        {localizedCaption(currentImage) && (
           <p className="mt-2 text-center text-base text-zinc-600 dark:text-zinc-400">
-            {currentImage.caption}
+            {localizedCaption(currentImage)}
           </p>
         )}
       </div>

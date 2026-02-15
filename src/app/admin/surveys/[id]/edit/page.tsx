@@ -13,6 +13,8 @@ interface ImageItem {
   audioFilename: string | null;
   label: string | null;
   caption: string | null;
+  captionEs: string | null;
+  captionCa: string | null;
   sortOrder: number;
 }
 
@@ -60,11 +62,13 @@ function ImageRow({
   img: ImageItem;
   index: number;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, label: string, caption: string, audio: File | null, removeAudio: boolean) => Promise<void>;
+  onUpdate: (id: string, label: string, caption: string, captionEs: string, captionCa: string, audio: File | null, removeAudio: boolean) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(img.label || "");
   const [caption, setCaption] = useState(img.caption || "");
+  const [captionEs, setCaptionEs] = useState(img.captionEs || "");
+  const [captionCa, setCaptionCa] = useState(img.captionCa || "");
   const [removeAudio, setRemoveAudio] = useState(false);
   const [saving, setSaving] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -77,7 +81,9 @@ function ImageRow({
   useEffect(() => {
     setLabel(img.label || "");
     setCaption(img.caption || "");
-  }, [img.label, img.caption]);
+    setCaptionEs(img.captionEs || "");
+    setCaptionCa(img.captionCa || "");
+  }, [img.label, img.caption, img.captionEs, img.captionCa]);
 
   // Clean up audio element on unmount
   useEffect(() => {
@@ -97,7 +103,7 @@ function ImageRow({
   async function handleSave() {
     setSaving(true);
     const file = audioBlob && audioBlob.size > 0 ? blobToFile(audioBlob) : null;
-    await onUpdate(img.id, label, caption, file, removeAudio);
+    await onUpdate(img.id, label, caption, captionEs, captionCa, file, removeAudio);
     clearAudio();
     setRemoveAudio(false);
     setSaving(false);
@@ -107,6 +113,8 @@ function ImageRow({
   function handleCancel() {
     setLabel(img.label || "");
     setCaption(img.caption || "");
+    setCaptionEs(img.captionEs || "");
+    setCaptionCa(img.captionCa || "");
     clearAudio();
     setRemoveAudio(false);
     setEditing(false);
@@ -222,6 +230,27 @@ function ImageRow({
               placeholder="Caption shown to participants during evaluation"
               className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
             />
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                Translations (ES / CA)
+              </summary>
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  value={captionEs}
+                  onChange={(e) => setCaptionEs(e.target.value)}
+                  placeholder="Spanish caption"
+                  className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  value={captionCa}
+                  onChange={(e) => setCaptionCa(e.target.value)}
+                  placeholder="Catalan caption"
+                  className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+                />
+              </div>
+            </details>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">Audio (auto-plays during evaluation)</label>
@@ -587,11 +616,13 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleUpdateImage(imageId: string, label: string, caption: string, audio: File | null, removeAudio: boolean) {
+  async function handleUpdateImage(imageId: string, label: string, caption: string, captionEs: string, captionCa: string, audio: File | null, removeAudio: boolean) {
     const formData = new FormData();
     formData.append("imageId", imageId);
     formData.append("label", label);
     formData.append("caption", caption);
+    formData.append("captionEs", captionEs);
+    formData.append("captionCa", captionCa);
     if (audio) formData.append("audio", audio);
     if (removeAudio) formData.append("removeAudio", "true");
 

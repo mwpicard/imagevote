@@ -139,6 +139,14 @@ export async function PATCH(
     const caption = formData.get("caption") as string;
     updates.caption = caption || null;
   }
+  if (formData.has("captionEs")) {
+    const captionEs = formData.get("captionEs") as string;
+    updates.captionEs = captionEs || null;
+  }
+  if (formData.has("captionCa")) {
+    const captionCa = formData.get("captionCa") as string;
+    updates.captionCa = captionCa || null;
+  }
 
   // Audio file replacement
   const audio = formData.get("audio") as File | null;

@@ -186,3 +186,9 @@ try {
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_body_ca TEXT`);
 } catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE images ADD COLUMN caption_es TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE images ADD COLUMN caption_ca TEXT`);
+} catch { /* column already exists */ }

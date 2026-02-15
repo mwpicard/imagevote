@@ -141,6 +141,8 @@ export async function POST(
       audioFilename: newAudioFilename,
       label: img.label,
       caption: img.caption,
+      captionEs: img.captionEs,
+      captionCa: img.captionCa,
       sortOrder: img.sortOrder,
     });
   }
