@@ -44,12 +44,15 @@ export async function POST(
 
   // Generate coupon for pre-orders with a beta price
   let coupon: string | undefined;
+  console.log("[order] type:", type, "betaPrice:", survey?.betaPrice, "COUPON_SECRET set:", !!process.env.COUPON_SECRET);
   if (type === "preorder" && survey?.betaPrice) {
     const secret = process.env.COUPON_SECRET;
     if (secret) {
       const cents = parsePriceToCents(survey.betaPrice);
+      console.log("[order] cents:", cents);
       if (cents > 0) {
         coupon = generateCoupon(email, cents, secret);
+        console.log("[order] generated coupon:", coupon);
       }
     }
   }
