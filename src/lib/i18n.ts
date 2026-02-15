@@ -89,6 +89,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "done.shareWhatsApp": "Send via WhatsApp",
     "done.shareCopyLink": "Copy link",
     "done.shareLinkCopied": "Copied!",
+    "done.referralTitle": "Help your friends with screen time management!",
+    "done.referralBody": "Share this link! You'll earn Dormy credit for each Dormy sold!",
+    "done.referralWhatsApp": "Hey! Check out Dormy — it helps you sleep better by keeping your phone away at night. Take the fun quiz here: {url}",
   },
   es: {
     "intro.start": "Comenzar",
@@ -168,6 +171,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "done.shareWhatsApp": "Enviar por WhatsApp",
     "done.shareCopyLink": "Copiar enlace",
     "done.shareLinkCopied": "¡Copiado!",
+    "done.referralTitle": "¡Ayuda a tus amigos a gestionar el tiempo de pantalla!",
+    "done.referralBody": "¡Comparte este enlace! ¡Ganarás crédito Dormy por cada Dormy vendido!",
+    "done.referralWhatsApp": "¡Eh! Mira Dormy — te ayuda a dormir mejor guardando tu móvil por la noche. Haz el quiz divertido aquí: {url}",
   },
   ca: {
     "intro.start": "Començar",
@@ -247,6 +253,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "done.shareWhatsApp": "Enviar per WhatsApp",
     "done.shareCopyLink": "Copiar enllaç",
     "done.shareLinkCopied": "Copiat!",
+    "done.referralTitle": "Ajuda els teus amics a gestionar el temps de pantalla!",
+    "done.referralBody": "Comparteix aquest enllaç! Guanyaràs crèdit Dormy per cada Dormy venut!",
+    "done.referralWhatsApp": "Ei! Mira Dormy — t'ajuda a dormir millor guardant el teu mòbil a la nit. Fes el quiz divertit aquí: {url}",
   },
 };
 
