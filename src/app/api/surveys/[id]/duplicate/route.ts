@@ -133,12 +133,34 @@ export async function POST(
       }
     }
 
+    let newAudioFilenameEs: string | null = null;
+    if (img.audioFilenameEs) {
+      const ext = path.extname(img.audioFilenameEs);
+      newAudioFilenameEs = `${newImageId}-audio-es${ext}`;
+      const src = path.join(uploadsDir, img.audioFilenameEs);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(uploadsDir, newAudioFilenameEs));
+      }
+    }
+
+    let newAudioFilenameCa: string | null = null;
+    if (img.audioFilenameCa) {
+      const ext = path.extname(img.audioFilenameCa);
+      newAudioFilenameCa = `${newImageId}-audio-ca${ext}`;
+      const src = path.join(uploadsDir, img.audioFilenameCa);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(uploadsDir, newAudioFilenameCa));
+      }
+    }
+
     await db.insert(images).values({
       id: newImageId,
       surveyId: newId,
       filename: newFilename,
       videoFilename: newVideoFilename,
       audioFilename: newAudioFilename,
+      audioFilenameEs: newAudioFilenameEs,
+      audioFilenameCa: newAudioFilenameCa,
       label: img.label,
       caption: img.caption,
       captionEs: img.captionEs,

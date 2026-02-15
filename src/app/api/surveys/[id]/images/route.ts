@@ -172,6 +172,46 @@ export async function PATCH(
     updates.audioFilename = null;
   }
 
+  // Spanish audio
+  const audioEs = formData.get("audioEs") as File | null;
+  if (audioEs) {
+    if (existing.audioFilenameEs) {
+      const oldPath = path.join(uploadsDir, existing.audioFilenameEs);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    const ext = path.extname(audioEs.name) || ".mp3";
+    const filename = `${imageId}-audio-es${ext}`;
+    fs.writeFileSync(path.join(uploadsDir, filename), Buffer.from(await audioEs.arrayBuffer()));
+    updates.audioFilenameEs = filename;
+  }
+  if (formData.get("removeAudioEs") === "true" && !audioEs) {
+    if (existing.audioFilenameEs) {
+      const oldPath = path.join(uploadsDir, existing.audioFilenameEs);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    updates.audioFilenameEs = null;
+  }
+
+  // Catalan audio
+  const audioCa = formData.get("audioCa") as File | null;
+  if (audioCa) {
+    if (existing.audioFilenameCa) {
+      const oldPath = path.join(uploadsDir, existing.audioFilenameCa);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    const ext = path.extname(audioCa.name) || ".mp3";
+    const filename = `${imageId}-audio-ca${ext}`;
+    fs.writeFileSync(path.join(uploadsDir, filename), Buffer.from(await audioCa.arrayBuffer()));
+    updates.audioFilenameCa = filename;
+  }
+  if (formData.get("removeAudioCa") === "true" && !audioCa) {
+    if (existing.audioFilenameCa) {
+      const oldPath = path.join(uploadsDir, existing.audioFilenameCa);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    updates.audioFilenameCa = null;
+  }
+
   if (Object.keys(updates).length > 0) {
     await db.update(images).set(updates).where(eq(images.id, imageId));
   }

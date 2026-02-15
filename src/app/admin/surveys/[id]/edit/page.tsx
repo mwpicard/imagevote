@@ -11,6 +11,8 @@ interface ImageItem {
   filename: string;
   videoFilename: string | null;
   audioFilename: string | null;
+  audioFilenameEs: string | null;
+  audioFilenameCa: string | null;
   label: string | null;
   caption: string | null;
   captionEs: string | null;
@@ -62,7 +64,7 @@ function ImageRow({
   img: ImageItem;
   index: number;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, label: string, caption: string, captionEs: string, captionCa: string, audio: File | null, removeAudio: boolean) => Promise<void>;
+  onUpdate: (id: string, label: string, caption: string, captionEs: string, captionCa: string, audio: File | null, removeAudio: boolean, audioEs: File | null, removeAudioEs: boolean, audioCa: File | null, removeAudioCa: boolean) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(img.label || "");
@@ -70,6 +72,10 @@ function ImageRow({
   const [captionEs, setCaptionEs] = useState(img.captionEs || "");
   const [captionCa, setCaptionCa] = useState(img.captionCa || "");
   const [removeAudio, setRemoveAudio] = useState(false);
+  const [audioEsFile, setAudioEsFile] = useState<File | null>(null);
+  const [audioCaFile, setAudioCaFile] = useState<File | null>(null);
+  const [removeAudioEs, setRemoveAudioEs] = useState(false);
+  const [removeAudioCa, setRemoveAudioCa] = useState(false);
   const [saving, setSaving] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -103,9 +109,13 @@ function ImageRow({
   async function handleSave() {
     setSaving(true);
     const file = audioBlob && audioBlob.size > 0 ? blobToFile(audioBlob) : null;
-    await onUpdate(img.id, label, caption, captionEs, captionCa, file, removeAudio);
+    await onUpdate(img.id, label, caption, captionEs, captionCa, file, removeAudio, audioEsFile, removeAudioEs, audioCaFile, removeAudioCa);
     clearAudio();
     setRemoveAudio(false);
+    setAudioEsFile(null);
+    setAudioCaFile(null);
+    setRemoveAudioEs(false);
+    setRemoveAudioCa(false);
     setSaving(false);
     setEditing(false);
   }
@@ -117,6 +127,10 @@ function ImageRow({
     setCaptionCa(img.captionCa || "");
     clearAudio();
     setRemoveAudio(false);
+    setAudioEsFile(null);
+    setAudioCaFile(null);
+    setRemoveAudioEs(false);
+    setRemoveAudioCa(false);
     setEditing(false);
     if (audioElRef.current) {
       audioElRef.current.pause();
@@ -249,6 +263,82 @@ function ImageRow({
                   placeholder="Catalan caption"
                   className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
                 />
+                <div className="mt-3 border-t border-zinc-100 pt-3">
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-500">Audio (ES)</label>
+                  {img.audioFilenameEs && !removeAudioEs && !audioEsFile ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleReview(`/api/uploads?file=${encodeURIComponent(img.audioFilenameEs!)}`)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                      >
+                        {playing ? "Stop" : "Play"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRemoveAudioEs(true)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : removeAudioEs && !audioEsFile ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-500">Will be removed on save</span>
+                      <button type="button" onClick={() => setRemoveAudioEs(false)} className="text-xs text-zinc-500 hover:text-zinc-700">Undo</button>
+                    </div>
+                  ) : audioEsFile ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-green-700">{audioEsFile.name}</span>
+                      <button type="button" onClick={() => setAudioEsFile(null)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => setAudioEsFile(e.target.files?.[0] || null)}
+                      className="w-full text-xs text-zinc-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+                    />
+                  )}
+                </div>
+                <div className="mt-3 border-t border-zinc-100 pt-3">
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-500">Audio (CA)</label>
+                  {img.audioFilenameCa && !removeAudioCa && !audioCaFile ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleReview(`/api/uploads?file=${encodeURIComponent(img.audioFilenameCa!)}`)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+                      >
+                        {playing ? "Stop" : "Play"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRemoveAudioCa(true)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : removeAudioCa && !audioCaFile ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-500">Will be removed on save</span>
+                      <button type="button" onClick={() => setRemoveAudioCa(false)} className="text-xs text-zinc-500 hover:text-zinc-700">Undo</button>
+                    </div>
+                  ) : audioCaFile ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-green-700">{audioCaFile.name}</span>
+                      <button type="button" onClick={() => setAudioCaFile(null)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => setAudioCaFile(e.target.files?.[0] || null)}
+                      className="w-full text-xs text-zinc-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+                    />
+                  )}
+                </div>
               </div>
             </details>
           </div>
@@ -616,7 +706,7 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleUpdateImage(imageId: string, label: string, caption: string, captionEs: string, captionCa: string, audio: File | null, removeAudio: boolean) {
+  async function handleUpdateImage(imageId: string, label: string, caption: string, captionEs: string, captionCa: string, audio: File | null, removeAudio: boolean, audioEs: File | null, removeAudioEs: boolean, audioCa: File | null, removeAudioCa: boolean) {
     const formData = new FormData();
     formData.append("imageId", imageId);
     formData.append("label", label);
@@ -625,6 +715,10 @@ export default function EditSurveyPage() {
     formData.append("captionCa", captionCa);
     if (audio) formData.append("audio", audio);
     if (removeAudio) formData.append("removeAudio", "true");
+    if (audioEs) formData.append("audioEs", audioEs);
+    if (removeAudioEs) formData.append("removeAudioEs", "true");
+    if (audioCa) formData.append("audioCa", audioCa);
+    if (removeAudioCa) formData.append("removeAudioCa", "true");
 
     const res = await fetch(`/api/surveys/${id}/images`, {
       method: "PATCH",

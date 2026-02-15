@@ -10,6 +10,8 @@ interface ImageItem {
   filename: string;
   videoFilename: string | null;
   audioFilename: string | null;
+  audioFilenameEs: string | null;
+  audioFilenameCa: string | null;
   label: string | null;
   caption: string | null;
   captionEs: string | null;
@@ -109,6 +111,12 @@ export default function EvaluatePage() {
     return img.caption;
   }
 
+  function localizedAudio(img: ImageItem): string | null {
+    if (lang === "es" && img.audioFilenameEs) return img.audioFilenameEs;
+    if (lang === "ca" && img.audioFilenameCa) return img.audioFilenameCa;
+    return img.audioFilename;
+  }
+
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
@@ -130,11 +138,12 @@ export default function EvaluatePage() {
     let cancelled = false;
 
     async function runSequence() {
-      // Step 1: Play image audio if present
-      if (currentImage!.audioFilename) {
+      // Step 1: Play image audio if present (localized)
+      const audioFile = localizedAudio(currentImage!);
+      if (audioFile) {
         setPlayingAudio(true);
         const audio = new Audio(
-          `/api/uploads?file=${encodeURIComponent(currentImage!.audioFilename!)}`
+          `/api/uploads?file=${encodeURIComponent(audioFile)}`
         );
         audioRef.current = audio;
 

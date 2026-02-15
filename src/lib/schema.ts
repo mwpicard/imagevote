@@ -52,6 +52,8 @@ export const images = sqliteTable("images", {
   filename: text("filename").notNull(),
   videoFilename: text("video_filename"),
   audioFilename: text("audio_filename"),
+  audioFilenameEs: text("audio_filename_es"),
+  audioFilenameCa: text("audio_filename_ca"),
   label: text("label"),
   caption: text("caption"),
   captionEs: text("caption_es"),
