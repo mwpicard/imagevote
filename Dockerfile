@@ -36,4 +36,4 @@ COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "mkdir -p /app/data/uploads && node server.js"]
+CMD ["sh", "-c", "echo \"[env-check] COUPON_SECRET=$(test -n \"$COUPON_SECRET\" && echo SET || echo UNSET) RESEND=$(test -n \"$RESEND_API_KEY\" && echo SET || echo UNSET) ADMIN=$(test -n \"$ADMIN_EMAIL\" && echo SET || echo UNSET)\" && mkdir -p /app/data/uploads && node server.js"]
