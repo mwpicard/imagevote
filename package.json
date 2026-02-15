@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "mkdir -p data/uploads && next start",
     "lint": "eslint"
   },
   "dependencies": {
