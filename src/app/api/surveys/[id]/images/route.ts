@@ -101,6 +101,14 @@ export async function DELETE(
     const audPath = path.join(uploadsDir, image.audioFilename);
     if (fs.existsSync(audPath)) fs.unlinkSync(audPath);
   }
+  if (image.audioFilenameEs) {
+    const p = path.join(uploadsDir, image.audioFilenameEs);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+  if (image.audioFilenameCa) {
+    const p = path.join(uploadsDir, image.audioFilenameCa);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
 
   await db.delete(images).where(eq(images.id, imageId));
   return NextResponse.json({ success: true });
