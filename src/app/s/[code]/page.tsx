@@ -15,6 +15,8 @@ interface Survey {
   introBodyCa: string | null;
   introMediaFilename: string | null;
   introAudioFilename: string | null;
+  introAudioFilenameEs: string | null;
+  introAudioFilenameCa: string | null;
   narrationTiming: string;
   outroHeading: string;
   outroBody: string;
@@ -83,9 +85,14 @@ export default function IntroPage() {
   // Play intro narration audio — triggered on first user interaction
   // (browsers block autoplay of audio with sound without a gesture)
   useEffect(() => {
-    if (!survey?.introAudioFilename) return;
+    const audioFile = lang === "es" && survey?.introAudioFilenameEs
+      ? survey.introAudioFilenameEs
+      : lang === "ca" && survey?.introAudioFilenameCa
+        ? survey.introAudioFilenameCa
+        : survey?.introAudioFilename;
+    if (!audioFile || !survey) return;
 
-    const audioUrl = `/api/uploads?file=${encodeURIComponent(survey.introAudioFilename)}`;
+    const audioUrl = `/api/uploads?file=${encodeURIComponent(audioFile)}`;
     const audio = new Audio(audioUrl);
     narrationRef.current = audio;
 
@@ -134,7 +141,7 @@ export default function IntroPage() {
       audio.pause();
       narrationRef.current = null;
     };
-  }, [survey]);
+  }, [survey, lang]);
 
   function handleLanguageChange(newLang: Locale) {
     setLang(newLang);

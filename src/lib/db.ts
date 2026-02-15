@@ -198,3 +198,15 @@ try {
 try {
   sqlite.exec(`ALTER TABLE images ADD COLUMN audio_filename_ca TEXT`);
 } catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN intro_audio_filename_es TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN intro_audio_filename_ca TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_audio_filename_es TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_audio_filename_ca TEXT`);
+} catch { /* column already exists */ }

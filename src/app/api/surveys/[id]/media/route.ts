@@ -14,14 +14,18 @@ function ensureUploadsDir() {
   }
 }
 
-const VALID_TARGETS = ["intro", "outro", "intro-audio", "outro-audio"] as const;
+const VALID_TARGETS = ["intro", "outro", "intro-audio", "outro-audio", "intro-audio-es", "intro-audio-ca", "outro-audio-es", "outro-audio-ca"] as const;
 type Target = (typeof VALID_TARGETS)[number];
 
 const TARGET_FIELD_MAP: Record<Target, keyof typeof surveys.$inferSelect> = {
   intro: "introMediaFilename",
   outro: "outroMediaFilename",
   "intro-audio": "introAudioFilename",
+  "intro-audio-es": "introAudioFilenameEs",
+  "intro-audio-ca": "introAudioFilenameCa",
   "outro-audio": "outroAudioFilename",
+  "outro-audio-es": "outroAudioFilenameEs",
+  "outro-audio-ca": "outroAudioFilenameCa",
 };
 
 function isValidTarget(t: string): t is Target {
@@ -41,7 +45,7 @@ export async function POST(
 
   if (!target || !file || !isValidTarget(target)) {
     return NextResponse.json(
-      { error: "target (intro|outro|intro-audio|outro-audio) and file are required" },
+      { error: "target and file are required" },
       { status: 400 }
     );
   }
@@ -84,7 +88,7 @@ export async function DELETE(
 
   if (!isValidTarget(target)) {
     return NextResponse.json(
-      { error: "target must be intro, outro, intro-audio, or outro-audio" },
+      { error: "Invalid target" },
       { status: 400 }
     );
   }

@@ -28,10 +28,14 @@ interface Survey {
   introBody: string;
   introMediaFilename: string | null;
   introAudioFilename: string | null;
+  introAudioFilenameEs: string | null;
+  introAudioFilenameCa: string | null;
   outroHeading: string;
   outroBody: string;
   outroMediaFilename: string | null;
   outroAudioFilename: string | null;
+  outroAudioFilenameEs: string | null;
+  outroAudioFilenameCa: string | null;
   narrationTiming: string;
   votingMode: "binary" | "scale" | "pairwise" | "guided_tour";
   language: string;
@@ -637,7 +641,7 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleMediaUpload(target: "intro" | "outro" | "intro-audio" | "outro-audio", file: File) {
+  async function handleMediaUpload(target: "intro" | "outro" | "intro-audio" | "outro-audio" | "intro-audio-es" | "intro-audio-ca" | "outro-audio-es" | "outro-audio-ca", file: File) {
     const formData = new FormData();
     formData.append("target", target);
     formData.append("file", file);
@@ -650,7 +654,7 @@ export default function EditSurveyPage() {
     }
   }
 
-  async function handleMediaDelete(target: "intro" | "outro" | "intro-audio" | "outro-audio") {
+  async function handleMediaDelete(target: "intro" | "outro" | "intro-audio" | "outro-audio" | "intro-audio-es" | "intro-audio-ca" | "outro-audio-es" | "outro-audio-ca") {
     const res = await fetch(`/api/surveys/${id}/media`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -1071,6 +1075,35 @@ export default function EditSurveyPage() {
                 <p className="mt-1.5 text-sm text-zinc-400">
                   Auto-plays when participants see the intro screen.
                 </p>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                    Audio translations (ES / CA)
+                  </summary>
+                  <div className="mt-2 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500">Spanish</label>
+                      {session.introAudioFilenameEs ? (
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => handleNarrationReview(`/api/uploads?file=${encodeURIComponent(session.introAudioFilenameEs!)}`, introAudioPlaying, setIntroAudioPlaying, introAudioElRef)} className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50">{introAudioPlaying ? "Stop" : "Play"}</button>
+                          <button type="button" onClick={() => handleMediaDelete("intro-audio-es")} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                      ) : (
+                        <input type="file" accept="audio/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaUpload("intro-audio-es", f); }} className="w-full text-xs text-zinc-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:bg-zinc-200" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500">Catalan</label>
+                      {session.introAudioFilenameCa ? (
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => handleNarrationReview(`/api/uploads?file=${encodeURIComponent(session.introAudioFilenameCa!)}`, introAudioPlaying, setIntroAudioPlaying, introAudioElRef)} className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50">{introAudioPlaying ? "Stop" : "Play"}</button>
+                          <button type="button" onClick={() => handleMediaDelete("intro-audio-ca")} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                      ) : (
+                        <input type="file" accept="audio/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaUpload("intro-audio-ca", f); }} className="w-full text-xs text-zinc-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:bg-zinc-200" />
+                      )}
+                    </div>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -1273,6 +1306,35 @@ export default function EditSurveyPage() {
                 <p className="mt-1.5 text-sm text-zinc-400">
                   Auto-plays when participants see the outro screen.
                 </p>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-600">
+                    Audio translations (ES / CA)
+                  </summary>
+                  <div className="mt-2 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500">Spanish</label>
+                      {session.outroAudioFilenameEs ? (
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => handleNarrationReview(`/api/uploads?file=${encodeURIComponent(session.outroAudioFilenameEs!)}`, outroAudioPlaying, setOutroAudioPlaying, outroAudioElRef)} className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50">{outroAudioPlaying ? "Stop" : "Play"}</button>
+                          <button type="button" onClick={() => handleMediaDelete("outro-audio-es")} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                      ) : (
+                        <input type="file" accept="audio/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaUpload("outro-audio-es", f); }} className="w-full text-xs text-zinc-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:bg-zinc-200" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500">Catalan</label>
+                      {session.outroAudioFilenameCa ? (
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => handleNarrationReview(`/api/uploads?file=${encodeURIComponent(session.outroAudioFilenameCa!)}`, outroAudioPlaying, setOutroAudioPlaying, outroAudioElRef)} className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50">{outroAudioPlaying ? "Stop" : "Play"}</button>
+                          <button type="button" onClick={() => handleMediaDelete("outro-audio-ca")} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                      ) : (
+                        <input type="file" accept="audio/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaUpload("outro-audio-ca", f); }} className="w-full text-xs text-zinc-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:bg-zinc-200" />
+                      )}
+                    </div>
+                  </div>
+                </details>
               </div>
               <div>
                 <label htmlFor="betaPrice" className={labelClass}>

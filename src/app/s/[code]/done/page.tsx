@@ -15,6 +15,8 @@ interface Survey {
   outroBodyCa: string | null;
   outroMediaFilename: string | null;
   outroAudioFilename: string | null;
+  outroAudioFilenameEs: string | null;
+  outroAudioFilenameCa: string | null;
   narrationTiming: string;
   betaPrice: string | null;
   preorderUrl: string | null;
@@ -161,9 +163,14 @@ export default function DonePage() {
 
   // Play outro narration audio — triggered on first user interaction if autoplay blocked
   useEffect(() => {
-    if (!survey?.outroAudioFilename) return;
+    const audioFile = lang === "es" && survey?.outroAudioFilenameEs
+      ? survey.outroAudioFilenameEs
+      : lang === "ca" && survey?.outroAudioFilenameCa
+        ? survey.outroAudioFilenameCa
+        : survey?.outroAudioFilename;
+    if (!audioFile || !survey) return;
 
-    const audioUrl = `/api/uploads?file=${encodeURIComponent(survey.outroAudioFilename)}`;
+    const audioUrl = `/api/uploads?file=${encodeURIComponent(audioFile)}`;
     const audio = new Audio(audioUrl);
     narrationRef.current = audio;
 
@@ -209,7 +216,7 @@ export default function DonePage() {
       audio.pause();
       narrationRef.current = null;
     };
-  }, [survey]);
+  }, [survey, lang]);
 
   async function handleMicToggle() {
     if (isRecording) {

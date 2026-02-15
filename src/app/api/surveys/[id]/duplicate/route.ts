@@ -67,6 +67,46 @@ export async function POST(
     }
   }
 
+  let introAudioFilenameEs: string | null = null;
+  if (source.introAudioFilenameEs) {
+    const ext = path.extname(source.introAudioFilenameEs);
+    introAudioFilenameEs = `${newId}-intro-audio-es${ext}`;
+    const src = path.join(uploadsDir, source.introAudioFilenameEs);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(uploadsDir, introAudioFilenameEs));
+    }
+  }
+
+  let introAudioFilenameCa: string | null = null;
+  if (source.introAudioFilenameCa) {
+    const ext = path.extname(source.introAudioFilenameCa);
+    introAudioFilenameCa = `${newId}-intro-audio-ca${ext}`;
+    const src = path.join(uploadsDir, source.introAudioFilenameCa);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(uploadsDir, introAudioFilenameCa));
+    }
+  }
+
+  let outroAudioFilenameEs: string | null = null;
+  if (source.outroAudioFilenameEs) {
+    const ext = path.extname(source.outroAudioFilenameEs);
+    outroAudioFilenameEs = `${newId}-outro-audio-es${ext}`;
+    const src = path.join(uploadsDir, source.outroAudioFilenameEs);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(uploadsDir, outroAudioFilenameEs));
+    }
+  }
+
+  let outroAudioFilenameCa: string | null = null;
+  if (source.outroAudioFilenameCa) {
+    const ext = path.extname(source.outroAudioFilenameCa);
+    outroAudioFilenameCa = `${newId}-outro-audio-ca${ext}`;
+    const src = path.join(uploadsDir, source.outroAudioFilenameCa);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(uploadsDir, outroAudioFilenameCa));
+    }
+  }
+
   // Create the new survey
   await db.insert(surveys).values({
     id: newId,
@@ -79,7 +119,11 @@ export async function POST(
     introMediaFilename,
     outroMediaFilename,
     introAudioFilename,
+    introAudioFilenameEs,
+    introAudioFilenameCa,
     outroAudioFilename,
+    outroAudioFilenameEs,
+    outroAudioFilenameCa,
     narrationTiming: source.narrationTiming,
     autoTranscribe: source.autoTranscribe,
     votingMode: source.votingMode,
