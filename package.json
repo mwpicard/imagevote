@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "mkdir -p data/uploads && node .next/standalone/server.js",
+    "start": "mkdir -p data/uploads && HOSTNAME=0.0.0.0 node .next/standalone/server.js",
     "lint": "eslint"
   },
   "dependencies": {
