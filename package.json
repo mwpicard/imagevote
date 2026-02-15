@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node -e \"console.log('[env-check] COUPON='+(process.env.COUPON_SECRET?'SET':'UNSET')+' RESEND='+(process.env.RESEND_API_KEY?'SET':'UNSET')+' ADMIN='+(process.env.ADMIN_EMAIL?'SET':'UNSET'))\" && mkdir -p data/uploads && next start",
+    "start": "node -e \"console.log('[env-check] COUPON='+(process.env.COUPON_SECRET?'SET':'UNSET')+' RESEND='+(process.env.RESEND_API_KEY?'SET':'UNSET')+' ADMIN='+(process.env.ADMIN_EMAIL?'SET':'UNSET'))\" && mkdir -p data/uploads && node .next/standalone/server.js",
     "lint": "eslint"
   },
   "dependencies": {
