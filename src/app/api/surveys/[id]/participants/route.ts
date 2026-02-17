@@ -39,17 +39,20 @@ export async function POST(
 
   const participantId = uuid();
 
+  const groupLabel = body.groupLabel?.trim() || null;
+
   await db.insert(participants).values({
     id: participantId,
     surveyId: id,
     firstName,
     lastName: body.lastName?.trim() || null,
     age: body.age ? Number(body.age) : null,
+    groupLabel,
     createdAt: new Date().toISOString(),
   });
 
   return NextResponse.json(
-    { id: participantId, firstName, lastName: body.lastName?.trim() || null, age: body.age ? Number(body.age) : null },
+    { id: participantId, firstName, lastName: body.lastName?.trim() || null, age: body.age ? Number(body.age) : null, groupLabel },
     { status: 201 }
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
@@ -39,6 +39,7 @@ interface ResponseData {
   vote: number | null;
   audioFilename: string | null;
   transcription: string | null;
+  sentiment: string | null;
   createdAt: string;
   image: ImageData;
 }
@@ -53,6 +54,7 @@ interface PairwiseResponseData {
   score: number | null;
   audioFilename: string | null;
   transcription: string | null;
+  sentiment: string | null;
   createdAt: string;
 }
 
@@ -61,6 +63,7 @@ interface OutroRecording {
   participantId: string;
   audioFilename: string;
   transcription: string | null;
+  sentiment: string | null;
   createdAt: string;
 }
 
@@ -69,12 +72,14 @@ interface Participant {
   firstName: string;
   lastName: string | null;
   age: number | null;
+  groupLabel: string | null;
   createdAt: string;
 }
 
 interface TranscribeStatus {
   available: boolean;
   pending: { responses: number; pairwise: number; outro: number; total: number };
+  sentimentPending: { responses: number; pairwise: number; outro: number; total: number };
 }
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
@@ -92,6 +97,10 @@ export default function ResultsPage() {
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [showAlgorithm, setShowAlgorithm] = useState(false);
   const [copiedTranscript, setCopiedTranscript] = useState(false);
+  const [filterParticipant, setFilterParticipant] = useState<string>("");
+  const [filterAgeMin, setFilterAgeMin] = useState<string>("");
+  const [filterAgeMax, setFilterAgeMax] = useState<string>("");
+  const [filterGroup, setFilterGroup] = useState<string>("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(() => {
@@ -229,8 +238,65 @@ export default function ResultsPage() {
       ? `${p.firstName} ${p.lastName.charAt(0)}.`
       : p.firstName;
     if (p.age) name += ` (${p.age})`;
+    if (p.groupLabel) name += ` [${p.groupLabel}]`;
     return name;
   }
+
+  // Filtered participant IDs based on filter criteria
+  const filteredParticipantIds = useMemo(() => {
+    let filtered = participants;
+    if (filterParticipant) {
+      filtered = filtered.filter((p) => p.id === filterParticipant);
+    }
+    if (filterAgeMin) {
+      const min = Number(filterAgeMin);
+      filtered = filtered.filter((p) => p.age !== null && p.age >= min);
+    }
+    if (filterAgeMax) {
+      const max = Number(filterAgeMax);
+      filtered = filtered.filter((p) => p.age !== null && p.age <= max);
+    }
+    if (filterGroup) {
+      filtered = filtered.filter((p) => p.groupLabel === filterGroup);
+    }
+    return new Set(filtered.map((p) => p.id));
+  }, [participants, filterParticipant, filterAgeMin, filterAgeMax, filterGroup]);
+
+  const hasActiveFilter = !!(filterParticipant || filterAgeMin || filterAgeMax || filterGroup);
+
+  const filteredResponses = useMemo(
+    () => hasActiveFilter ? responses.filter((r) => filteredParticipantIds.has(r.participantId)) : responses,
+    [responses, filteredParticipantIds, hasActiveFilter]
+  );
+  const filteredPairwise = useMemo(
+    () => hasActiveFilter ? pairwiseResponses.filter((r) => filteredParticipantIds.has(r.participantId)) : pairwiseResponses,
+    [pairwiseResponses, filteredParticipantIds, hasActiveFilter]
+  );
+  const filteredOutro = useMemo(
+    () => hasActiveFilter ? outroRecordings.filter((r) => filteredParticipantIds.has(r.participantId)) : outroRecordings,
+    [outroRecordings, filteredParticipantIds, hasActiveFilter]
+  );
+
+  // Unique group labels for filter dropdown
+  const groupLabels = useMemo(
+    () => [...new Set(participants.map((p) => p.groupLabel).filter(Boolean))] as string[],
+    [participants]
+  );
+
+  // Sentiment overview across all filtered data
+  const sentimentOverview = useMemo(() => {
+    const allSentiments = [
+      ...filteredResponses.map((r) => r.sentiment),
+      ...filteredPairwise.map((r) => r.sentiment),
+      ...filteredOutro.map((r) => r.sentiment),
+    ].filter(Boolean) as string[];
+    const total = allSentiments.length;
+    if (total === 0) return null;
+    const positive = allSentiments.filter((s) => s === "positive").length;
+    const neutral = allSentiments.filter((s) => s === "neutral").length;
+    const negative = allSentiments.filter((s) => s === "negative").length;
+    return { positive, neutral, negative, total };
+  }, [filteredResponses, filteredPairwise, filteredOutro]);
 
   const sessionUrl = typeof window !== "undefined"
     ? `${window.location.origin}/s/${survey.code}`
@@ -238,7 +304,7 @@ export default function ResultsPage() {
 
   // Build per-image stats with combined scoring
   const imageStats = survey.images.map((img, idx) => {
-    const imgResponses = responses.filter((r) => r.imageId === img.id);
+    const imgResponses = filteredResponses.filter((r) => r.imageId === img.id);
     const votes = imgResponses.filter((r) => r.vote !== null).map((r) => r.vote!);
 
     let voteLabel = "";
@@ -265,7 +331,7 @@ export default function ResultsPage() {
     // Compute pairwise comparison score (0-100 per comparison)
     let compPoints = 0;
     let compCount = 0;
-    for (const r of pairwiseResponses) {
+    for (const r of filteredPairwise) {
       if (r.imageAId === img.id) {
         const s = r.score ?? (r.winnerId === img.id ? -50 : r.winnerId ? 50 : 0);
         compPoints += (100 - s) / 2;
@@ -278,7 +344,13 @@ export default function ResultsPage() {
     }
     const comparisonScore = compCount > 0 ? compPoints / compCount : null;
 
-    const pairwiseWins = pairwiseResponses.filter((r) => r.winnerId === img.id).length;
+    const pairwiseWins = filteredPairwise.filter((r) => r.winnerId === img.id).length;
+
+    // Per-image sentiment summary
+    const imgSentiments = imgResponses.map((r) => r.sentiment).filter(Boolean) as string[];
+    const imgSentimentPositive = imgSentiments.filter((s) => s === "positive").length;
+    const imgSentimentNeutral = imgSentiments.filter((s) => s === "neutral").length;
+    const imgSentimentNegative = imgSentiments.filter((s) => s === "negative").length;
 
     // Combined score: average of available phases
     let combinedScore: number;
@@ -304,6 +376,9 @@ export default function ResultsPage() {
       ratingScore,
       comparisonScore,
       combinedScore,
+      imgSentimentPositive,
+      imgSentimentNeutral,
+      imgSentimentNegative,
     };
   });
 
@@ -321,7 +396,7 @@ export default function ResultsPage() {
   const rankingData = survey.images.map((img, idx) => {
     let points = 0;
     let comparisons = 0;
-    for (const r of pairwiseResponses) {
+    for (const r of filteredPairwise) {
       if (r.imageAId === img.id) {
         // score: -100 (strongly prefer A) to +100 (strongly prefer B)
         // Normalize so imageA earns 0–100: (100 - score) / 2
@@ -350,7 +425,7 @@ export default function ResultsPage() {
 
   // Head-to-head matrix
   function getH2HRecord(imgA: string, imgB: string) {
-    const relevant = pairwiseResponses.filter(
+    const relevant = filteredPairwise.filter(
       (r) =>
         (r.imageAId === imgA && r.imageBId === imgB) ||
         (r.imageAId === imgB && r.imageBId === imgA)
@@ -368,7 +443,7 @@ export default function ResultsPage() {
   }
 
   function exportData(format: "csv" | "json") {
-    const data = responses.map((r) => {
+    const data = filteredResponses.map((r) => {
       const p = participantMap.get(r.participantId);
       return {
         imageId: r.imageId,
@@ -377,9 +452,11 @@ export default function ResultsPage() {
         participantFirstName: p?.firstName || "",
         participantLastName: p?.lastName || "",
         participantAge: p?.age ?? "",
+        participantGroup: p?.groupLabel || "",
         vote: r.vote,
         audioFilename: r.audioFilename || "",
         transcription: r.transcription || "",
+        sentiment: r.sentiment || "",
         createdAt: r.createdAt,
       };
     });
@@ -410,13 +487,14 @@ export default function ResultsPage() {
   }
 
   function exportPairwiseData(format: "csv" | "json") {
-    const data = pairwiseResponses.map((r) => {
+    const data = filteredPairwise.map((r) => {
       const p = participantMap.get(r.participantId);
       return {
       participantId: r.participantId,
       participantFirstName: p?.firstName || "",
       participantLastName: p?.lastName || "",
       participantAge: p?.age ?? "",
+      participantGroup: p?.groupLabel || "",
       imageAId: r.imageAId,
       imageALabel: imageNameMap.get(r.imageAId) || "",
       imageBId: r.imageBId,
@@ -426,6 +504,7 @@ export default function ResultsPage() {
       score: r.score ?? "",
       audioFilename: r.audioFilename || "",
       transcription: r.transcription || "",
+      sentiment: r.sentiment || "",
       createdAt: r.createdAt,
     };
     });
@@ -571,32 +650,140 @@ export default function ResultsPage() {
         </div>
       )}
 
+      {/* Filter bar */}
+      {participants.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-8">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Participant</label>
+              <select
+                value={filterParticipant}
+                onChange={(e) => setFilterParticipant(e.target.value)}
+                className="h-9 rounded-lg border border-gray-300 px-3 text-sm bg-white"
+              >
+                <option value="">All</option>
+                {participants.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName ? p.lastName.charAt(0) + "." : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Age min</label>
+              <input
+                type="number"
+                value={filterAgeMin}
+                onChange={(e) => setFilterAgeMin(e.target.value)}
+                placeholder="--"
+                className="h-9 w-20 rounded-lg border border-gray-300 px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Age max</label>
+              <input
+                type="number"
+                value={filterAgeMax}
+                onChange={(e) => setFilterAgeMax(e.target.value)}
+                placeholder="--"
+                className="h-9 w-20 rounded-lg border border-gray-300 px-3 text-sm"
+              />
+            </div>
+            {groupLabels.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Group</label>
+                <select
+                  value={filterGroup}
+                  onChange={(e) => setFilterGroup(e.target.value)}
+                  className="h-9 rounded-lg border border-gray-300 px-3 text-sm bg-white"
+                >
+                  <option value="">All</option>
+                  {groupLabels.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {hasActiveFilter && (
+              <button
+                onClick={() => {
+                  setFilterParticipant("");
+                  setFilterAgeMin("");
+                  setFilterAgeMax("");
+                  setFilterGroup("");
+                }}
+                className="h-9 px-3 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-red-200"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+          {hasActiveFilter && (
+            <p className="mt-2 text-xs text-gray-400">
+              Showing {filteredResponses.length} responses, {filteredPairwise.length} comparisons from {filteredParticipantIds.size} participant{filteredParticipantIds.size !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Sentiment overview */}
+      {sentimentOverview && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">Sentiment Overview</h2>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm mb-3">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+              Positive: {sentimentOverview.positive} ({Math.round((sentimentOverview.positive / sentimentOverview.total) * 100)}%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full bg-gray-400" />
+              Neutral: {sentimentOverview.neutral} ({Math.round((sentimentOverview.neutral / sentimentOverview.total) * 100)}%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+              Negative: {sentimentOverview.negative} ({Math.round((sentimentOverview.negative / sentimentOverview.total) * 100)}%)
+            </span>
+          </div>
+          <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
+            {sentimentOverview.positive > 0 && (
+              <div className="bg-green-500" style={{ width: `${(sentimentOverview.positive / sentimentOverview.total) * 100}%` }} />
+            )}
+            {sentimentOverview.neutral > 0 && (
+              <div className="bg-gray-400" style={{ width: `${(sentimentOverview.neutral / sentimentOverview.total) * 100}%` }} />
+            )}
+            {sentimentOverview.negative > 0 && (
+              <div className="bg-red-500" style={{ width: `${(sentimentOverview.negative / sentimentOverview.total) * 100}%` }} />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Full transcript — accordion */}
       {(() => {
         const pids = [...new Set([
-          ...responses.map((r) => r.participantId),
-          ...pairwiseResponses.map((r) => r.participantId),
-          ...outroRecordings.map((r) => r.participantId),
+          ...filteredResponses.map((r) => r.participantId),
+          ...filteredPairwise.map((r) => r.participantId),
+          ...filteredOutro.map((r) => r.participantId),
         ])];
-        const allEntries: { participantId: string; entries: { context: string; text: string | null; audioFilename: string | null }[] }[] = [];
+        const allEntries: { participantId: string; entries: { context: string; text: string | null; sentiment: string | null; audioFilename: string | null }[] }[] = [];
         for (const pid of pids) {
-          const entries: { context: string; text: string | null; audioFilename: string | null }[] = [];
-          for (const r of responses) {
+          const entries: { context: string; text: string | null; sentiment: string | null; audioFilename: string | null }[] = [];
+          for (const r of filteredResponses) {
             if (r.participantId === pid && (r.transcription || r.audioFilename)) {
               const label = imageNameMap.get(r.imageId) || r.imageId.slice(0, 8);
-              entries.push({ context: `on ${label}`, text: r.transcription, audioFilename: r.audioFilename });
+              entries.push({ context: `on ${label}`, text: r.transcription, sentiment: r.sentiment, audioFilename: r.audioFilename });
             }
           }
-          for (const r of pairwiseResponses) {
+          for (const r of filteredPairwise) {
             if (r.participantId === pid && (r.transcription || r.audioFilename)) {
               const a = imageNameMap.get(r.imageAId) || "?";
               const b = imageNameMap.get(r.imageBId) || "?";
-              entries.push({ context: `${a} vs ${b}`, text: r.transcription, audioFilename: r.audioFilename });
+              entries.push({ context: `${a} vs ${b}`, text: r.transcription, sentiment: r.sentiment, audioFilename: r.audioFilename });
             }
           }
-          for (const r of outroRecordings) {
+          for (const r of filteredOutro) {
             if (r.participantId === pid && (r.transcription || r.audioFilename)) {
-              entries.push({ context: "final impressions", text: r.transcription, audioFilename: r.audioFilename });
+              entries.push({ context: "final impressions", text: r.transcription, sentiment: r.sentiment, audioFilename: r.audioFilename });
             }
           }
           if (entries.length > 0) allEntries.push({ participantId: pid, entries });
@@ -718,7 +905,18 @@ export default function ResultsPage() {
                           <p className="text-sm text-gray-700">
                             <span className="text-gray-400">[{e.context}]</span>{" "}
                             {e.text ? (
-                              <span className="italic">&ldquo;{e.text}&rdquo;</span>
+                              <>
+                                <span className="italic">&ldquo;{e.text}&rdquo;</span>
+                                {e.sentiment && (
+                                  <span className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                    e.sentiment === "positive" ? "bg-green-100 text-green-700" :
+                                    e.sentiment === "negative" ? "bg-red-100 text-red-700" :
+                                    "bg-gray-100 text-gray-600"
+                                  }`}>
+                                    {e.sentiment}
+                                  </span>
+                                )}
+                              </>
                             ) : (
                               <span className="text-gray-300 italic">not transcribed</span>
                             )}
@@ -735,7 +933,7 @@ export default function ResultsPage() {
       })()}
 
       {/* Ranking header */}
-      {(responses.length > 0 || pairwiseResponses.length > 0) && (
+      {(filteredResponses.length > 0 || filteredPairwise.length > 0) && (
         <div className="flex items-center gap-3 mb-4">
           <h2 className="text-2xl font-bold text-gray-900">Real Time Ranking</h2>
           <button
@@ -804,6 +1002,13 @@ export default function ResultsPage() {
                       (rating {Math.round(stat.ratingScore)} + comparison {Math.round(stat.comparisonScore)}) / 2
                     </span>
                   )}
+                  {(stat.imgSentimentPositive > 0 || stat.imgSentimentNeutral > 0 || stat.imgSentimentNegative > 0) && (
+                    <span className="flex items-center gap-1">
+                      {stat.imgSentimentPositive > 0 && <span className="inline-flex items-center rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">{stat.imgSentimentPositive}+</span>}
+                      {stat.imgSentimentNeutral > 0 && <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{stat.imgSentimentNeutral}~</span>}
+                      {stat.imgSentimentNegative > 0 && <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">{stat.imgSentimentNegative}-</span>}
+                    </span>
+                  )}
                 </div>
 
                 {/* Audio recordings for this image */}
@@ -824,7 +1029,18 @@ export default function ResultsPage() {
                             {playingAudio === r.audioFilename ? "Playing..." : `\u25B6 ${participantName(r.participantId)}`}
                           </button>
                           {r.transcription && (
-                            <p className="text-sm italic text-gray-500">&ldquo;{r.transcription}&rdquo;</p>
+                            <p className="text-sm italic text-gray-500">
+                              &ldquo;{r.transcription}&rdquo;
+                              {r.sentiment && (
+                                <span className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                  r.sentiment === "positive" ? "bg-green-100 text-green-700" :
+                                  r.sentiment === "negative" ? "bg-red-100 text-red-700" :
+                                  "bg-gray-100 text-gray-600"
+                                }`}>
+                                  {r.sentiment}
+                                </span>
+                              )}
+                            </p>
                           )}
                         </div>
                       ))}
@@ -837,7 +1053,7 @@ export default function ResultsPage() {
       </div>
 
       {/* Phase 2: Pairwise Comparison Results (guided_tour only) */}
-      {isGuidedTour && pairwiseResponses.length > 0 && (
+      {isGuidedTour && filteredPairwise.length > 0 && (
         <>
           <h2 className="text-2xl font-bold text-gray-900 mt-12 mb-4">Phase 2 — Pairwise Comparisons</h2>
 
@@ -982,7 +1198,7 @@ export default function ResultsPage() {
                         bgColor = "bg-yellow-50";
                       }
                       const winnerFilename = winnerId ? imageFilenameMap.get(winnerId) : null;
-                      const pairAudios = pairwiseResponses.filter(
+                      const pairAudios = filteredPairwise.filter(
                         (r) =>
                           r.audioFilename &&
                           ((r.imageAId === rowImg.id && r.imageBId === colImg.id) ||
@@ -1043,11 +1259,11 @@ export default function ResultsPage() {
       )}
 
       {/* Outro recordings */}
-      {outroRecordings.length > 0 && (
+      {filteredOutro.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mt-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Final Impressions</h2>
           <div className="space-y-2">
-            {outroRecordings.map((rec) => (
+            {filteredOutro.map((rec) => (
               <div key={rec.id} className="flex items-start gap-2">
                 <button
                   onClick={() => playAudio(rec.audioFilename)}
@@ -1060,7 +1276,18 @@ export default function ResultsPage() {
                   {playingAudio === rec.audioFilename ? "Playing..." : `\u25B6 ${participantName(rec.participantId)}`}
                 </button>
                 {rec.transcription && (
-                  <p className="text-sm italic text-gray-500">&ldquo;{rec.transcription}&rdquo;</p>
+                  <p className="text-sm italic text-gray-500">
+                    &ldquo;{rec.transcription}&rdquo;
+                    {rec.sentiment && (
+                      <span className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        rec.sentiment === "positive" ? "bg-green-100 text-green-700" :
+                        rec.sentiment === "negative" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {rec.sentiment}
+                      </span>
+                    )}
+                  </p>
                 )}
               </div>
             ))}
@@ -1069,7 +1296,7 @@ export default function ResultsPage() {
       )}
 
       {/* Empty state */}
-      {responses.length === 0 && pairwiseResponses.length === 0 && (
+      {filteredResponses.length === 0 && filteredPairwise.length === 0 && (
         <div className="text-center py-16 text-gray-400">
           <p className="text-lg">No responses yet</p>
           <p className="text-sm mt-2">Share the survey link to start collecting feedback</p>

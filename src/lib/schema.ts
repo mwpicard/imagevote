@@ -73,6 +73,7 @@ export const responses = sqliteTable("responses", {
   vote: integer("vote"),
   audioFilename: text("audio_filename"),
   transcription: text("transcription"),
+  sentiment: text("sentiment"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -83,6 +84,7 @@ export const outroRecordings = sqliteTable("outro_recordings", {
   participantId: text("participant_id").notNull(),
   audioFilename: text("audio_filename").notNull(),
   transcription: text("transcription"),
+  sentiment: text("sentiment"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -115,6 +117,7 @@ export const pairwiseResponses = sqliteTable("pairwise_responses", {
   score: integer("score"),
   audioFilename: text("audio_filename"),
   transcription: text("transcription"),
+  sentiment: text("sentiment"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -135,6 +138,7 @@ export const participants = sqliteTable("participants", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name"),
   age: integer("age"),
+  groupLabel: text("group_label"),
   lastSeenAt: text("last_seen_at"),
   createdAt: text("created_at").notNull(),
 });

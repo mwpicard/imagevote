@@ -210,3 +210,15 @@ try {
 try {
   sqlite.exec(`ALTER TABLE sessions ADD COLUMN outro_audio_filename_ca TEXT`);
 } catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE responses ADD COLUMN sentiment TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE pairwise_responses ADD COLUMN sentiment TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE outro_recordings ADD COLUMN sentiment TEXT`);
+} catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE participants ADD COLUMN group_label TEXT`);
+} catch { /* column already exists */ }

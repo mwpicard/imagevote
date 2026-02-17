@@ -5,6 +5,7 @@ import { execFileSync } from "child_process";
 import { db } from "@/lib/db";
 import { responses, pairwiseResponses, outroRecordings } from "@/lib/schema";
 import { eq } from "drizzle-orm";
+import { analyzeSentimentAndSave } from "@/lib/sentiment";
 
 let openaiClient: OpenAI | null = null;
 
@@ -89,6 +90,8 @@ export async function transcribeAndSave(
     } else {
       await db.update(outroRecordings).set({ transcription: text }).where(eq(outroRecordings.id, recordId));
     }
+    // Chain sentiment analysis after successful transcription
+    await analyzeSentimentAndSave(text, recordId, table);
   } catch (err) {
     console.error(`[transcribeAndSave] Failed for ${table}/${recordId}:`, err);
   }

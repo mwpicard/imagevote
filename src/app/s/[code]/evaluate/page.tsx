@@ -56,6 +56,7 @@ export default function EvaluatePage() {
   const [error, setError] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
   const [playingAudio, setPlayingAudio] = useState(false);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
 
   const { isRecording, audioBlob, startRecording, stopRecording, clearAudio } =
     useAudioRecorder();
@@ -120,6 +121,18 @@ export default function EvaluatePage() {
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  // Online/offline state
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
 
   // Pre-request mic permission when autoRecord is enabled and consent given
   useEffect(() => {
@@ -205,7 +218,8 @@ export default function EvaluatePage() {
         body: formData,
       });
 
-      if (!res.ok) {
+      // Accept both 200/201 (normal) and 202 (queued by service worker while offline)
+      if (!res.ok && res.status !== 202) {
         throw new Error("Failed to submit response");
       }
 
@@ -283,6 +297,13 @@ export default function EvaluatePage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-white dark:bg-zinc-950">
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="bg-amber-500 px-4 py-2 text-center text-sm font-medium text-white">
+          {t(lang, "eval.offline")}
+        </div>
+      )}
+
       {/* Progress bar */}
       <div className="flex flex-col items-center px-4 pt-4 pb-2">
         {survey.votingMode === "guided_tour" && (

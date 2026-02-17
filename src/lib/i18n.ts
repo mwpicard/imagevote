@@ -19,6 +19,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "intro.lastName": "Last name (optional)",
     "intro.age": "Age (optional)",
     "intro.firstNameRequired": "Please enter your first name",
+    "intro.group": "Group (optional)",
     "intro.audioConsent": "Is it ok to record audio? We'll use the transcript to better assess your feedback.",
     "intro.audioYes": "Yes",
     "intro.audioNo": "No",
@@ -39,6 +40,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "eval.scaleHigh": "Great!",
     "eval.preferThis": "Prefer This",
     "eval.playingAudio": "Playing audio...",
+    "eval.offline": "You are offline. Responses will be synced when you reconnect.",
     "eval.oops": "Oops",
 
     // Compare
@@ -104,6 +106,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "intro.lastName": "Apellido (opcional)",
     "intro.age": "Edad (opcional)",
     "intro.firstNameRequired": "Por favor, introduce tu nombre",
+    "intro.group": "Grupo (opcional)",
     "intro.audioConsent": "¿Está bien grabar audio? Usaremos la transcripción para evaluar mejor tus comentarios.",
     "intro.audioYes": "Sí",
     "intro.audioNo": "No",
@@ -123,6 +126,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "eval.scaleHigh": "¡Genial!",
     "eval.preferThis": "Prefiero esta",
     "eval.playingAudio": "Reproduciendo audio...",
+    "eval.offline": "Sin conexion. Las respuestas se sincronizaran al reconectar.",
     "eval.oops": "Ups",
 
     "compare.phaseLabel": "Fase 2 de 2 — Comparar",
@@ -186,6 +190,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "intro.lastName": "Cognom (opcional)",
     "intro.age": "Edat (opcional)",
     "intro.firstNameRequired": "Si us plau, introdueix el teu nom",
+    "intro.group": "Grup (opcional)",
     "intro.audioConsent": "Està bé gravar àudio? Utilitzarem la transcripció per avaluar millor els teus comentaris.",
     "intro.audioYes": "Sí",
     "intro.audioNo": "No",
@@ -205,6 +210,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "eval.scaleHigh": "Genial!",
     "eval.preferThis": "Prefereixo aquesta",
     "eval.playingAudio": "Reproduint àudio...",
+    "eval.offline": "Sense connexio. Les respostes es sincronitzaran en reconnectar.",
     "eval.oops": "Ups",
 
     "compare.phaseLabel": "Fase 2 de 2 — Comparar",

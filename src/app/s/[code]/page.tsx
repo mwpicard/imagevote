@@ -50,6 +50,7 @@ export default function IntroPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
+  const [groupLabel, setGroupLabel] = useState("");
   const [audioConsent, setAudioConsent] = useState<boolean | null>(null);
   const [nameError, setNameError] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -81,6 +82,13 @@ export default function IntroPage() {
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  // Pre-cache survey data for offline support (images cached by SW on first load)
+  useEffect(() => {
+    if (!survey) return;
+    // Trigger a fetch of the survey data so the SW can cache it
+    fetch(`/api/surveys/by-code/${params.code}`).catch(() => {});
+  }, [survey, params.code]);
 
   // Play intro narration audio — triggered on first user interaction
   // (browsers block autoplay of audio with sound without a gesture)
@@ -164,6 +172,7 @@ export default function IntroPage() {
           firstName: firstName.trim(),
           lastName: lastName.trim() || undefined,
           age: age ? Number(age) : undefined,
+          groupLabel: groupLabel.trim() || undefined,
         }),
       });
 
@@ -323,6 +332,17 @@ export default function IntroPage() {
             value={age}
             onChange={(e) => setAge(e.target.value)}
             placeholder={t(lang, "intro.age")}
+            className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
+              hasMedia
+                ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
+                : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+            }`}
+          />
+          <input
+            type="text"
+            value={groupLabel}
+            onChange={(e) => setGroupLabel(e.target.value)}
+            placeholder={t(lang, "intro.group")}
             className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
               hasMedia
                 ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
