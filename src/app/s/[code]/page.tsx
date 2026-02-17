@@ -339,17 +339,6 @@ export default function IntroPage() {
                 : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
             }`}
           />
-          <input
-            type="text"
-            value={groupLabel}
-            onChange={(e) => setGroupLabel(e.target.value)}
-            placeholder={t(lang, "intro.group")}
-            className={`h-12 w-full rounded-xl border px-4 text-sm outline-none transition-colors ${
-              hasMedia
-                ? "border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:border-white/60"
-                : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
-            }`}
-          />
         </div>
 
         {/* Audio consent */}
@@ -392,7 +381,7 @@ export default function IntroPage() {
         </div>
 
         {/* NDA consent notice */}
-        <p className={`mt-6 max-w-xs text-center text-xs leading-relaxed ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
+        <p className={`mt-6 max-w-xs text-center text-sm leading-relaxed ${hasMedia ? "text-white/90" : "text-zinc-500 dark:text-zinc-400"}`}>
           {(() => {
             const raw = t(lang, "intro.ndaConsent", { ndaLink: "__NDA__" });
             const parts = raw.split("__NDA__");
