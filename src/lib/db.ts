@@ -222,3 +222,6 @@ try {
 try {
   sqlite.exec(`ALTER TABLE participants ADD COLUMN group_label TEXT`);
 } catch { /* column already exists */ }
+try {
+  sqlite.exec(`ALTER TABLE participants ADD COLUMN nda_agreed_at TEXT`);
+} catch { /* column already exists */ }

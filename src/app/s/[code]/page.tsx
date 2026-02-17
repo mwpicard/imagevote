@@ -51,7 +51,7 @@ export default function IntroPage() {
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
   const [groupLabel, setGroupLabel] = useState("");
-  const [audioConsent, setAudioConsent] = useState<boolean | null>(null);
+  const [audioConsent, setAudioConsent] = useState<boolean | null>(true);
   const [nameError, setNameError] = useState(false);
   const [starting, setStarting] = useState(false);
   const narrationRef = useRef<HTMLAudioElement | null>(null);
@@ -173,6 +173,7 @@ export default function IntroPage() {
           lastName: lastName.trim() || undefined,
           age: age ? Number(age) : undefined,
           groupLabel: groupLabel.trim() || undefined,
+          ndaAgreedAt: new Date().toISOString(),
         }),
       });
 
@@ -224,7 +225,7 @@ export default function IntroPage() {
   const isVideo = hasMedia && /\.(mp4|webm|mov)$/i.test(survey.introMediaFilename!);
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-white px-6 dark:bg-zinc-950">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-y-auto bg-white px-6 py-8 dark:bg-zinc-950">
       {/* Background media */}
       {hasMedia && (
         isVideo ? (
@@ -390,10 +391,32 @@ export default function IntroPage() {
           </div>
         </div>
 
+        {/* NDA consent notice */}
+        <p className={`mt-6 max-w-xs text-center text-xs leading-relaxed ${hasMedia ? "text-white/60" : "text-zinc-400 dark:text-zinc-500"}`}>
+          {(() => {
+            const raw = t(lang, "intro.ndaConsent", { ndaLink: "__NDA__" });
+            const parts = raw.split("__NDA__");
+            return (
+              <>
+                {parts[0]}
+                <a
+                  href="/nda"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`underline ${hasMedia ? "text-white/80 hover:text-white" : "text-zinc-600 hover:text-zinc-800 dark:text-zinc-300 dark:hover:text-zinc-100"}`}
+                >
+                  {t(lang, "intro.ndaLinkText")}
+                </a>
+                {parts[1]}
+              </>
+            );
+          })()}
+        </p>
+
         <button
           onClick={handleStart}
           disabled={starting}
-          className={`mt-6 h-14 w-full max-w-xs rounded-2xl text-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`mt-3 h-14 w-full max-w-xs rounded-2xl text-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             hasMedia
               ? "bg-white text-zinc-900 hover:bg-white/90 active:bg-white/80"
               : "bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"

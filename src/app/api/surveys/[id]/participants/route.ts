@@ -40,6 +40,7 @@ export async function POST(
   const participantId = uuid();
 
   const groupLabel = body.groupLabel?.trim() || null;
+  const ndaAgreedAt = body.ndaAgreedAt || null;
 
   await db.insert(participants).values({
     id: participantId,
@@ -48,11 +49,12 @@ export async function POST(
     lastName: body.lastName?.trim() || null,
     age: body.age ? Number(body.age) : null,
     groupLabel,
+    ndaAgreedAt,
     createdAt: new Date().toISOString(),
   });
 
   return NextResponse.json(
-    { id: participantId, firstName, lastName: body.lastName?.trim() || null, age: body.age ? Number(body.age) : null, groupLabel },
+    { id: participantId, firstName, lastName: body.lastName?.trim() || null, age: body.age ? Number(body.age) : null, groupLabel, ndaAgreedAt },
     { status: 201 }
   );
 }

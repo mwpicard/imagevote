@@ -139,6 +139,7 @@ export const participants = sqliteTable("participants", {
   lastName: text("last_name"),
   age: integer("age"),
   groupLabel: text("group_label"),
+  ndaAgreedAt: text("nda_agreed_at"),
   lastSeenAt: text("last_seen_at"),
   createdAt: text("created_at").notNull(),
 });

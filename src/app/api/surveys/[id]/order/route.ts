@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { db } from "@/lib/db";
-import { orderInterests, surveys } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { images, orderInterests, surveys } from "@/lib/schema";
+import { eq, inArray } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { Resend } from "resend";
 import { generateCoupon, parsePriceToCents } from "@/lib/coupon-generator";
@@ -54,11 +54,52 @@ export async function POST(
 
   const adminEmail = process.env.ADMIN_EMAIL;
 
+  // Capture origin before entering after() — needed for absolute image URLs in emails
+  const origin = req.nextUrl.origin;
+
   // Send emails in the background so the user isn't blocked
   after(async () => {
-    // Send notification to admin
+    // Resolve image IDs to labels/filenames and fetch ALL survey images
+    type ImageRow = { id: string; label: string | null; filename: string };
+    let selectedImages: ImageRow[] = [];
+    let allSurveyImages: ImageRow[] = [];
+    try {
+      allSurveyImages = await db
+        .select({ id: images.id, label: images.label, filename: images.filename })
+        .from(images)
+        .where(eq(images.surveyId, surveyId));
+      const lookup = new Map(allSurveyImages.map((r) => [r.id, r]));
+      selectedImages = imageIds
+        .map((id: string) => lookup.get(id))
+        .filter((r: ImageRow | undefined): r is ImageRow => !!r);
+    } catch {
+      // fall through with empty arrays
+    }
+
+    function imgUrl(filename: string) {
+      return `${origin}/api/uploads?file=${encodeURIComponent(filename)}`;
+    }
+
+    function imageCardHtml(img: ImageRow, caption: string) {
+      return `<div style="display:inline-block;text-align:center;margin:8px">
+        <img src="${imgUrl(img.filename)}" alt="${img.label || img.filename}" style="width:200px;height:auto;border-radius:12px;border:2px solid #e4e4e7" />
+        <p style="margin:4px 0 0;font-size:14px;color:#52525b">${caption}</p>
+      </div>`;
+    }
+
+    const imageLabels = selectedImages.length > 0
+      ? selectedImages.map((r) => r.label || r.filename)
+      : imageIds;
+
+    // Send notification to admin (with image thumbnails)
     if (adminEmail) {
       try {
+        const selectedHtml = selectedImages
+          .map((img) => imageCardHtml(img, img.label || img.filename))
+          .join("");
+        const imageListHtml = imageLabels
+          .map((name: string) => `<li>${name}</li>`)
+          .join("");
         await getResend().emails.send({
           from: "Dormy <hello@guidal.org>",
           to: adminEmail,
@@ -70,8 +111,9 @@ export async function POST(
             <p><strong>Email:</strong> ${email}</p>
             <p><strong>Survey:</strong> ${surveyTitle}</p>
             ${coupon ? `<p><strong>Coupon:</strong> ${coupon}</p>` : ""}
-            <p><strong>Images selected:</strong> ${imageIds.length}</p>
-            <p><strong>Image IDs:</strong> ${imageIds.join(", ")}</p>
+            <p><strong>Their favourite (${selectedImages.length}):</strong></p>
+            <ul>${imageListHtml}</ul>
+            ${selectedHtml ? `<div style="margin:16px 0">${selectedHtml}</div>` : ""}
             <p><em>Reply to this email to contact them directly.</em></p>
           `,
         });
@@ -80,8 +122,18 @@ export async function POST(
       }
     }
 
-    // Send confirmation to participant
+    // Send confirmation to participant (with their favourite + all available Dormys)
     try {
+      const selectedSet = new Set(imageIds as string[]);
+      const otherImages = allSurveyImages.filter((img) => !selectedSet.has(img.id));
+
+      const favouriteHtml = selectedImages
+        .map((img) => imageCardHtml(img, `${img.label || img.filename} — your favourite!`))
+        .join("");
+      const othersHtml = otherImages
+        .map((img) => imageCardHtml(img, img.label || img.filename))
+        .join("");
+
       await getResend().emails.send({
         from: "Dormy <hello@guidal.org>",
         to: email,
@@ -100,9 +152,23 @@ export async function POST(
                 ? `<p style="margin:16px 0;padding:16px;background:#f0f9ff;border:2px dashed #2563eb;border-radius:8px;text-align:center;font-size:20px;font-weight:700;letter-spacing:2px;color:#1e40af">${coupon}</p>`
                 : "";
               const paymentButton = `<p style="margin:24px 0"><a href="${shopLink}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px">Go to the Dormy shop</a></p>`;
-              return `<h2>Pre-order confirmed!</h2><p>Thanks for your pre-order — we'll be in touch soon.</p>${couponBlock}${paymentButton}<p>If you have any questions, just reply to this email.</p>`;
+              const favouriteSection = favouriteHtml
+                ? `<h3 style="margin-top:24px">Your favourite Dormy</h3><div>${favouriteHtml}</div>`
+                : "";
+              const othersSection = othersHtml
+                ? `<h3 style="margin-top:24px">Also available</h3><div>${othersHtml}</div>`
+                : "";
+              return `<h2>Pre-order confirmed!</h2><p>Thanks for your pre-order — we'll be in touch soon.</p>${favouriteSection}${othersSection}${couponBlock}${paymentButton}<p>If you have any questions, just reply to this email.</p>`;
             })()
-          : `<h2>Welcome to the Dormy Beta list!</h2><p>Thanks for signing up — we'll be in touch soon with updates on how to get one of the very first Dormy.</p><p>If you have any questions, just reply to this email.</p>`,
+          : (() => {
+              const favouriteSection = favouriteHtml
+                ? `<h3 style="margin-top:24px">Your favourite Dormy</h3><div>${favouriteHtml}</div>`
+                : "";
+              const othersSection = othersHtml
+                ? `<h3 style="margin-top:24px">Also available</h3><div>${othersHtml}</div>`
+                : "";
+              return `<h2>Welcome to the Dormy Beta list!</h2><p>Thanks for signing up — we'll be in touch soon with updates on how to get one of the very first Dormy.</p>${favouriteSection}${othersSection}<p>If you have any questions, just reply to this email.</p>`;
+            })(),
       });
     } catch (err) {
       console.error("Failed to send confirmation email:", err);
