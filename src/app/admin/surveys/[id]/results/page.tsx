@@ -173,76 +173,7 @@ export default function ResultsPage() {
     }
   }
 
-
-  if (!survey) {
-    return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;
-  }
-
-  const isGuidedTour = survey.votingMode === "guided_tour";
-  const participantIds = [...new Set(responses.map((r) => r.participantId))];
-  const participantMap = new Map(participants.map((p) => [p.id, p]));
-
-  // Completion stats
-  const numImages = survey.images.length;
-  const expectedPairsR1 = (numImages * (numImages - 1)) / 2;
-  const expectedPairsR2 = numImages * (numImages - 1);
-
-  const completionStats = (() => {
-    const started = participants.length;
-    let completed = 0;
-    let bonusDone = 0;
-    let tired = 0;
-    let inProgress = 0;
-
-    for (const p of participants) {
-      const individualCount = responses.filter((r) => r.participantId === p.id).length;
-      const pairwiseCount = pairwiseResponses.filter((r) => r.participantId === p.id).length;
-
-      if (isGuidedTour) {
-        if (pairwiseCount >= expectedPairsR2) {
-          completed++;
-          bonusDone++;
-        } else if (pairwiseCount >= expectedPairsR1) {
-          // Could be "tired" or still doing round 2
-          if (pairwiseCount === expectedPairsR1) {
-            // Exactly round 1 — either tired or hasn't started round 2 yet
-            completed++;
-            tired++;
-          } else {
-            // Between round 1 and round 2 — still in progress on round 2
-            inProgress++;
-          }
-        } else if (individualCount > 0 || pairwiseCount > 0) {
-          inProgress++;
-        } else {
-          inProgress++;
-        }
-      } else {
-        if (individualCount >= numImages) {
-          completed++;
-        } else if (individualCount > 0) {
-          inProgress++;
-        } else {
-          inProgress++;
-        }
-      }
-    }
-
-    return { started, completed, bonusDone, tired, inProgress };
-  })();
-
-  function participantName(pid: string) {
-    const p = participantMap.get(pid);
-    if (!p) return pid.slice(0, 8);
-    let name = p.lastName
-      ? `${p.firstName} ${p.lastName.charAt(0)}.`
-      : p.firstName;
-    if (p.age) name += ` (${p.age})`;
-    if (p.groupLabel) name += ` [${p.groupLabel}]`;
-    return name;
-  }
-
-  // Filtered participant IDs based on filter criteria
+  // All useMemo hooks must be called before any early return to satisfy Rules of Hooks
   const filteredParticipantIds = useMemo(() => {
     let filtered = participants;
     if (filterParticipant) {
@@ -297,6 +228,71 @@ export default function ResultsPage() {
     const negative = allSentiments.filter((s) => s === "negative").length;
     return { positive, neutral, negative, total };
   }, [filteredResponses, filteredPairwise, filteredOutro]);
+
+  if (!survey) {
+    return <div className="flex items-center justify-center min-h-screen text-gray-500">Loading...</div>;
+  }
+
+  const isGuidedTour = survey.votingMode === "guided_tour";
+  const participantIds = [...new Set(responses.map((r) => r.participantId))];
+  const participantMap = new Map(participants.map((p) => [p.id, p]));
+
+  // Completion stats
+  const numImages = survey.images.length;
+  const expectedPairsR1 = (numImages * (numImages - 1)) / 2;
+  const expectedPairsR2 = numImages * (numImages - 1);
+
+  const completionStats = (() => {
+    const started = participants.length;
+    let completed = 0;
+    let bonusDone = 0;
+    let tired = 0;
+    let inProgress = 0;
+
+    for (const p of participants) {
+      const individualCount = responses.filter((r) => r.participantId === p.id).length;
+      const pairwiseCount = pairwiseResponses.filter((r) => r.participantId === p.id).length;
+
+      if (isGuidedTour) {
+        if (pairwiseCount >= expectedPairsR2) {
+          completed++;
+          bonusDone++;
+        } else if (pairwiseCount >= expectedPairsR1) {
+          if (pairwiseCount === expectedPairsR1) {
+            completed++;
+            tired++;
+          } else {
+            inProgress++;
+          }
+        } else if (individualCount > 0 || pairwiseCount > 0) {
+          inProgress++;
+        } else {
+          inProgress++;
+        }
+      } else {
+        if (individualCount >= numImages) {
+          completed++;
+        } else if (individualCount > 0) {
+          inProgress++;
+        } else {
+          inProgress++;
+        }
+      }
+    }
+
+    return { started, completed, bonusDone, tired, inProgress };
+  })();
+
+  function participantName(pid: string) {
+    const p = participantMap.get(pid);
+    if (!p) return pid.slice(0, 8);
+    let name = p.lastName
+      ? `${p.firstName} ${p.lastName.charAt(0)}.`
+      : p.firstName;
+    if (p.age) name += ` (${p.age})`;
+    if (p.groupLabel) name += ` [${p.groupLabel}]`;
+    return name;
+  }
 
   const sessionUrl = typeof window !== "undefined"
     ? `${window.location.origin}/s/${survey.code}`
