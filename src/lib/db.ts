@@ -4,19 +4,22 @@ import * as schema from "./schema";
 import path from "path";
 import fs from "fs";
 
-const dataDir = path.join(process.cwd(), "data");
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+type DB = ReturnType<typeof drizzle<typeof schema>>;
+let _db: DB | undefined;
 
-const sqlite = new Database(path.join(dataDir, "imagevote.db"));
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
+function initDb(): DB {
+  const dataDir = path.join(process.cwd(), "data");
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
 
-export const db = drizzle(sqlite, { schema });
+  const sqlite = new Database(path.join(dataDir, "imagevote.db"));
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("busy_timeout = 5000");
+  sqlite.pragma("foreign_keys = ON");
 
-// Create tables if they don't exist
-sqlite.exec(`
+  // Create tables if they don't exist
+  sqlite.exec(`
   CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -225,3 +228,15 @@ try {
 try {
   sqlite.exec(`ALTER TABLE participants ADD COLUMN nda_agreed_at TEXT`);
 } catch { /* column already exists */ }
+
+  return drizzle(sqlite, { schema });
+}
+
+// Lazy proxy: DB is only initialized on first actual use (not at import time).
+// This prevents SQLITE_BUSY errors when Next.js build workers import this module.
+export const db: DB = new Proxy({} as DB, {
+  get(_target, prop, receiver) {
+    if (!_db) _db = initDb();
+    return Reflect.get(_db, prop, receiver);
+  },
+});
